@@ -1,0 +1,7 @@
+---
+description: Documentation standards for SDD artifacts under spec/ and docs/
+globs: spec/**,docs/**
+alwaysApply: false
+---
+
+Follow @skills/documentation/SKILL.md. Templates: @skills/documentation/templates/spec-template.md, @skills/documentation/templates/adr-template.md.

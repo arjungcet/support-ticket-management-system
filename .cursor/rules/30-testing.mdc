@@ -1,0 +1,7 @@
+---
+description: Testing standards for backend and frontend tests
+globs: backend/src/test/**,frontend/**/*.test.ts,frontend/**/*.test.tsx,frontend/**/__tests__/**
+alwaysApply: false
+---
+
+Follow @rules/testing.md.

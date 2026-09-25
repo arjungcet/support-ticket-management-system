@@ -1,0 +1,7 @@
+---
+description: Java 21 and Spring Boot conventions, layering, validation, exceptions, database and transactions
+globs: backend/**/*.java,backend/**/*.sql,backend/**/*.yml,backend/**/*.yaml,backend/**/*.gradle.kts,backend/gradle/libs.versions.toml
+alwaysApply: false
+---
+
+Follow @rules/java-springboot.md and @rules/security.md.

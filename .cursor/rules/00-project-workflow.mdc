@@ -1,0 +1,11 @@
+---
+description: SDD phase order, prompt logging, AI-code verification and review expectations for this project
+alwaysApply: true
+---
+
+Read and follow @AGENTS.md and @rules/ai-assisted-development.md.
+
+- Work strictly in SDD phase order; do only the requested phase.
+- Log every prompt to `.specstory/history/` (SpecStory does this automatically in Cursor when installed) and append a summary to `docs/prompt-history.md`.
+- Never invent behaviour not in the spec — ask.
+- Run the AI-generated code verification checklist before declaring work done.

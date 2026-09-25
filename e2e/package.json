@@ -1,0 +1,15 @@
+{
+  "name": "support-desk-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test",
+    "e2e:stub": "E2E_BACKEND=stub playwright test",
+    "stub": "node stub/contract-stub.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "22.20.4",
+    "typescript": "5.9.3"
+  }
+}

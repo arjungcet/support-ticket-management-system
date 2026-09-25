@@ -1,0 +1,7 @@
+---
+description: REST API conventions and RFC 9457 error format for backend controllers, the OpenAPI contract, and the frontend API client
+globs: backend/**/api/**,spec/openapi.yaml,frontend/**/api/**,frontend/**/lib/**
+alwaysApply: false
+---
+
+Follow @rules/api-standards.md.

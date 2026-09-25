@@ -1,0 +1,15 @@
+# Single source of plugin and library versions (rules/java-springboot.md §8).
+# Libraries managed by the Spring Boot BOM intentionally omit a version.
+
+[versions]
+spring-boot = "4.1.1"
+spring-dependency-management = "1.1.7"
+jacoco = "0.8.15"
+
+[libraries]
+spring-boot-starter-webmvc = { module = "org.springframework.boot:spring-boot-starter-webmvc" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
