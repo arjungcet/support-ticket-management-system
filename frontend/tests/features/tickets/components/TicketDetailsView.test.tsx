@@ -32,7 +32,8 @@ describe("TicketDetailsView (REQ-3, TS-FE-06)", () => {
     await renderTicket(aTicket({ status: "RESOLVED", resolvedAt: "2026-09-25T11:00:00Z", assignee: "maria" }));
 
     expect(screen.getByText("User reports a 403 after password reset.")).toBeInTheDocument();
-    expect(screen.getByText("High", { selector: "dd" })).toBeInTheDocument();
+    expect(screen.getByText("High", { selector: "dd .badge.priority-high" })).toBeInTheDocument();
+    expect(screen.getByText("Resolved", { selector: "dd .badge.status-resolved" })).toBeInTheDocument();
     expect(screen.getAllByText("Resolved").length).toBeGreaterThan(0);
     expect(screen.getByText("Resolved", { selector: "dt" })).toBeInTheDocument();
     expect(screen.queryByText("Closed", { selector: "dt" })).not.toBeInTheDocument();

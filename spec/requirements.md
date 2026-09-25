@@ -2,7 +2,7 @@
 
 | Status | Last updated | Related |
 |--------|--------------|---------|
-| Explicit requirements: **approved** (as given by the product owner). Assumptions: **pending sign-off** (§15) | 2026-09-26 | [`architecture.md`](architecture.md), [`api-contract.md`](api-contract.md), [`state-machine.md`](state-machine.md), [`data-model.md`](data-model.md), [`test-strategy.md`](test-strategy.md), [spec review](../docs/reviews/2026-09-26-spec-review.md), [`docs/prompt-history.md`](../docs/prompt-history.md) |
+| Explicit requirements: **approved** (as given by the product owner). Assumptions and open questions: **signed off 2026-09-26** (§15, §16). Decisions D-2, D-4, D-5 still open (§17) | 2026-09-26 | [`architecture.md`](architecture.md), [`api-contract.md`](api-contract.md), [`state-machine.md`](state-machine.md), [`data-model.md`](data-model.md), [`test-strategy.md`](test-strategy.md), [spec review](../docs/reviews/2026-09-26-spec-review.md), [`docs/prompt-history.md`](../docs/prompt-history.md) |
 
 This is the requirements analysis (SDD milestone 02, guide Prompt 1). It separates what the product owner **stated**
 from what the team **assumed**, what is **unknown**, and what must be **decided**. Nothing here is silently invented.
@@ -17,6 +17,10 @@ from what the team **assumed**, what is **unknown**, and what must be **decided*
 > **History note.** This analysis was written **after** the design documents and the implementation. The design phases
 > had to record their own assumptions (see the spec review, SR-01). This document consolidates them in one place so
 > they can be signed off. It changes no behaviour. The REQ ids are unchanged.
+>
+> **Sign-off (2026-09-26).** The product owner confirmed every assumption in §15 as built, answered Q-1…Q-11 with the
+> implemented behaviour (§16), kept REQ-11 as written (no reopening), and decided D-1, D-3 and D-6 (§17). No behaviour
+> changed as a result.
 
 ---
 
@@ -187,7 +191,7 @@ persistence behaviour are specified in [`state-machine.md`](state-machine.md). R
 | AR-1 | A REST API (TC-1) exposing REQ-1…REQ-7 and status transitions (REQ-11/12) | E |
 | AR-2 | The API is the enforcement point for validation and the state machine (REQ-9, REQ-12) | E |
 | AR-3 | Endpoints, payloads and one consistent error structure are defined in [`api-contract.md`](api-contract.md) (versioned under `/api/v1`, RFC 9457 errors) | A (design), implemented |
-| AR-4 | A machine-readable contract (`openapi.yaml`) | D-3 |
+| AR-4 | A machine-readable contract: [`openapi.yaml`](openapi.yaml), kept in sync with `api-contract.md` | D-3 decided, implemented |
 
 ## 11. Frontend requirements
 
@@ -219,8 +223,8 @@ persistence behaviour are specified in [`state-machine.md`](state-machine.md). R
 | SEC-1 | No secrets in the repository. Configuration from the environment | E (AC-15, Prompt 0) |
 | SEC-2 | Validate all input at the backend (REQ-9). Bound SQL parameters only. User text rendered as text (no HTML injection) | E (REQ-9) + A (design), implemented |
 | SEC-3 | Error responses never expose internals (stack traces, SQL, class names) | A (design), implemented |
-| SEC-4 | **Authentication and authorisation:** none in v1. Anyone who can reach the system can do everything, and comment authors are unverified | A-4, implemented. **D-1** |
-| SEC-5 | Deployment boundary (internal network / SSO proxy), request-size limits, security headers | D-1 (security review H-2, M-2, M-4) |
+| SEC-4 | **Authentication and authorisation:** none in v1. Anyone who can reach the system can do everything, and comment authors are unverified | A-4, implemented. D-1 decided: [ADR-0002](../docs/adr/0002-no-authentication-internal-deployment.md) |
+| SEC-5 | Deployment boundary: local or trusted internal network only (ADR-0002). Frontend security headers with a nonce-based CSP: implemented (security review M-2). Request-size limits: open (M-4) | D-1 decided. M-4 open |
 | SEC-6 | Dependency vulnerability scanning | A (`rules/security.md` §5). Not yet automated (security review M-1) |
 
 ## 14. Observability and logging
@@ -230,65 +234,69 @@ persistence behaviour are specified in [`state-machine.md`](state-machine.md). R
 | OB-1 | Every request has a correlation id (accepted from `X-Correlation-Id` or generated), returned in the header and in every error body, and shown in the UI for server errors | A (architecture §18), implemented |
 | OB-2 | Business events logged at INFO (ticket created, status changed, comment added) without ticket text | A, implemented |
 | OB-3 | Never log secrets, full request bodies, ticket descriptions or comment text (may contain customer data) | A (`rules/security.md` §3), implemented |
-| OB-4 | Structured (JSON) logs in production, metrics, alerting | Q-11 |
+| OB-4 | Structured (JSON) logs in production, metrics, alerting | Q-11 answered: not in v1 (OB-1…3 only) |
 
 ---
 
-## 15. Assumptions register (for sign-off)
+## 15. Assumptions register (signed off 2026-09-26)
 
 All **implemented** assumptions are covered by tests. Changing one means updating the spec, code and tests together.
 
+On 2026-09-26 the product owner **confirmed all 22 as built**. They are now accepted requirements for v1.
+
 | ID | Assumption | Status |
 |----|-----------|--------|
-| A-4 | No authentication or authorisation in v1 | Implemented. Needs D-1 |
-| A-11 | Ticket responses include `allowedTransitions`. The UI shows only those actions | Implemented |
-| A-13 | Assignee is free text, not a user account | Implemented |
-| A-14 | Comment author is free text supplied by the client | Implemented |
-| A-15 | Priorities `LOW`, `MEDIUM`, `HIGH`, `URGENT`. Default `MEDIUM` | Implemented |
-| A-17 | Closed/cancelled tickets can't be edited or reassigned | Implemented |
-| A-18 | Closed/cancelled tickets can't receive comments | Implemented |
-| A-19 | No assignee required to start work. Assigning doesn't change status | Implemented |
-| A-20 | No reopening (`RESOLVED → IN_PROGRESS` rejected) | Implemented |
-| A-21 | Same-status transitions rejected | Implemented |
-| A-22 | Lifecycle timestamps recorded | Implemented |
-| A-24 | Search covers title and description (not comments or assignee), case-insensitive substring | Implemented |
-| A-30 | Text is trimmed. Whitespace-only counts as blank | Implemented |
-| A-34 / DM-6 | Comments don't change the ticket's version or `updatedAt` | Implemented |
-| DM-1, DM-2, API-7 | No deletion of tickets or comments | Implemented |
-| DM-3 | Description required | Implemented |
-| DM-4 | Blank assignee = unassigned | Implemented |
-| DM-5 | Length limits 200 / 5000 / 100 / 100 / 5000 / 100 | Implemented |
-| DM-8 | Status filter accepts several values | Implemented |
-| API-1 | A multi-word search is one phrase | Implemented |
-| API-2 | Unfiltered list includes closed/cancelled tickets | Implemented |
-| A-1 | Scale ≤ 100 k tickets, tens of users | Provisional (no target) |
+| A-4 | No authentication or authorisation in v1 | Implemented. Confirmed with D-1 ([ADR-0002](../docs/adr/0002-no-authentication-internal-deployment.md)) |
+| A-11 | Ticket responses include `allowedTransitions`. The UI shows only those actions | Implemented. Confirmed |
+| A-13 | Assignee is free text, not a user account | Implemented. Confirmed |
+| A-14 | Comment author is free text supplied by the client | Implemented. Confirmed |
+| A-15 | Priorities `LOW`, `MEDIUM`, `HIGH`, `URGENT`. Default `MEDIUM` | Implemented. Confirmed |
+| A-17 | Closed/cancelled tickets can't be edited or reassigned | Implemented. Confirmed |
+| A-18 | Closed/cancelled tickets can't receive comments | Implemented. Confirmed |
+| A-19 | No assignee required to start work. Assigning doesn't change status | Implemented. Confirmed |
+| A-20 | No reopening (`RESOLVED → IN_PROGRESS` rejected) | Implemented. Confirmed |
+| A-21 | Same-status transitions rejected | Implemented. Confirmed |
+| A-22 | Lifecycle timestamps recorded | Implemented. Confirmed |
+| A-24 | Search covers title and description (not comments or assignee), case-insensitive substring | Implemented. Confirmed |
+| A-30 | Text is trimmed. Whitespace-only counts as blank | Implemented. Confirmed |
+| A-34 / DM-6 | Comments don't change the ticket's version or `updatedAt` | Implemented. Confirmed |
+| DM-1, DM-2, API-7 | No deletion of tickets or comments | Implemented. Confirmed |
+| DM-3 | Description required | Implemented. Confirmed |
+| DM-4 | Blank assignee = unassigned | Implemented. Confirmed |
+| DM-5 | Length limits 200 / 5000 / 100 / 100 / 5000 / 100 | Implemented. Confirmed |
+| DM-8 | Status filter accepts several values | Implemented. Confirmed |
+| API-1 | A multi-word search is one phrase | Implemented. Confirmed |
+| API-2 | Unfiltered list includes closed/cancelled tickets | Implemented. Confirmed |
+| A-1 | Scale ≤ 100 k tickets, tens of users | Confirmed as the working assumption. Measurable targets remain D-4 |
 
-## 16. Open questions (product owner)
+## 16. Open questions (product owner) — answered 2026-09-26
 
-| ID | Question |
-|----|----------|
-| Q-1 | Is there a customer/requester for each ticket (name, contact), separate from the assignee? |
-| Q-2 | Should a resolved ticket be reopenable (e.g. `RESOLVED → IN_PROGRESS`)? REQ-11 as written says no. |
-| Q-3 | May closed/cancelled tickets still be edited or commented on (A-17/A-18 say no)? |
-| Q-4 | Must a ticket have an assignee before work starts? Should assigning start work automatically? |
-| Q-5 | Should tickets or comments ever be deleted or archived? |
-| Q-6 | Should adding a comment count as "activity" for sorting by last modified? |
-| Q-7 | Is a description mandatory? |
-| Q-8 | Are the four priority levels right? |
-| Q-9 | Should assignee and comment author be real users (requires authentication)? |
-| Q-10 | Should the default list hide closed/cancelled tickets? |
-| Q-11 | What operational visibility is expected in production (structured logs, metrics, alerts)? |
+All answered with the implemented behaviour, so no spec, code or test changes were needed.
+
+| ID | Question | Answer |
+|----|----------|--------|
+| Q-1 | Is there a customer/requester for each ticket (name, contact), separate from the assignee? | No, not in v1 |
+| Q-2 | Should a resolved ticket be reopenable (e.g. `RESOLVED → IN_PROGRESS`)? REQ-11 as written says no. | **No.** REQ-11 stands: `RESOLVED` can only move to `CLOSED` (A-20) |
+| Q-3 | May closed/cancelled tickets still be edited or commented on (A-17/A-18 say no)? | No. They are frozen |
+| Q-4 | Must a ticket have an assignee before work starts? Should assigning start work automatically? | No and no (A-19) |
+| Q-5 | Should tickets or comments ever be deleted or archived? | No, not in v1 (DM-1, DM-2, API-7) |
+| Q-6 | Should adding a comment count as "activity" for sorting by last modified? | No. Comments don't change `updatedAt` or `version` (A-34/DM-6) |
+| Q-7 | Is a description mandatory? | Yes (DM-3) |
+| Q-8 | Are the four priority levels right? | Yes: `LOW`, `MEDIUM`, `HIGH`, `URGENT`, default `MEDIUM` (A-15) |
+| Q-9 | Should assignee and comment author be real users (requires authentication)? | Not in v1: free text. Revisit together with authentication (ADR-0002) |
+| Q-10 | Should the default list hide closed/cancelled tickets? | No. The unfiltered list shows every status; users filter by status (API-2) |
+| Q-11 | What operational visibility is expected in production (structured logs, metrics, alerts)? | v1: correlation ids and business-event logs without ticket text (OB-1…3). JSON logs, metrics and alerts are out of scope |
 
 ## 17. Decisions needed
 
 | ID | Decision | Before | Reference |
 |----|----------|--------|-----------|
-| D-1 | Authentication / deployment boundary (internal network, SSO proxy, or v1 authentication) | Any deployment | Security review H-2 |
+| D-1 | Authentication / deployment boundary (internal network, SSO proxy, or v1 authentication) | Any deployment | Security review H-2. **Decided 2026-09-26:** no login in v1; local or trusted internal network only ([ADR-0002](../docs/adr/0002-no-authentication-internal-deployment.md)) |
 | D-2 | API contract semantics for `null` vs missing fields and error aggregation (keep the current implementation or simplify) | Further API changes | Spec review SR-02/SR-03, plan STEP-02 |
-| D-3 | Make `openapi.yaml` the single machine-readable contract | Frontend type generation, contract tests | Spec review SR-04, plan STEP-05 |
+| D-3 | Make `openapi.yaml` the single machine-readable contract | Frontend type generation, contract tests | Spec review SR-04, plan STEP-05. **Decided 2026-09-26:** [`openapi.yaml`](openapi.yaml) added; live backend responses for all 8 operations and every error class validated against it (28 of 28) |
 | D-4 | Measurable NFRs: latency target at a given data size, WCAG level, supported browsers | Performance and accessibility testing | Spec review SR-17 |
 | D-5 | Accept JUnit Jupiter 6 (Spring Boot BOM) instead of "JUnit 5" (TC-5), and whether Mockito-based service tests are wanted | Final sign-off | Acceptance review (re-run) C-6 |
-| D-6 | Sign-off of every assumption in §15 (confirm or change) | Final sign-off | Spec review SR-01 |
+| D-6 | Sign-off of every assumption in §15 (confirm or change) | Final sign-off | Spec review SR-01. **Decided 2026-09-26:** all confirmed as built |
 
 ## Changelog
 
@@ -296,3 +304,6 @@ All **implemented** assumptions are covered by tests. Changing one means updatin
 - 2026-09-26: Requirements analysis (milestone 02, guide Prompt 1): actors, use cases, NFRs, business, validation,
   error, persistence, API, frontend, testing, security and observability requirements. Assumptions register, open
   questions and decisions. Acceptance criteria AC-1…15 recorded. No REQ ids changed, and no behaviour changed.
+- 2026-09-26: Product-owner sign-off. §15 assumptions confirmed as built. Q-1…Q-11 answered with the implemented
+  behaviour (Q-2: no reopening, REQ-11 unchanged). D-1 decided (ADR-0002), D-3 decided (`openapi.yaml`), D-6 decided.
+  D-2, D-4 and D-5 remain open. No behaviour changed.

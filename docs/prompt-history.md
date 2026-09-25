@@ -340,3 +340,15 @@ Full per-session transcripts live in `.specstory/history/`.
 **Full text:** [.specstory/history/2026-09-26_09-50-prompt-anything-left-run-now.md](../.specstory/history/2026-09-26_09-50-prompt-anything-left-run-now.md)
 
 > Anything left for me to do in this project? Can I run it right now on my machine?
+
+## 2026-09-26 10:00 — UI screenshot
+**Phase:** Delivery / local run
+**Full text:** [.specstory/history/2026-09-26_10-00-prompt-ui-screenshot.md](../.specstory/history/2026-09-26_10-00-prompt-ui-screenshot.md)
+
+> Shared a screenshot of the running ticket list UI (plain styling; Sort label separated from its select).
+
+## 2026-09-26 10:10 — Decisions and optional improvements
+**Phase:** Requirements sign-off (02) + final fixes (16)
+**Full text:** [.specstory/history/2026-09-26_10-10-prompt-decisions-and-improvements.md](../.specstory/history/2026-09-26_10-10-prompt-decisions-and-improvements.md)
+
+> Sign off assumptions / Q-1…Q-11 / D-1…D-6; add frontend security headers, openapi.yaml, .github/copilot-instructions.md.

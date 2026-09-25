@@ -1,8 +1,8 @@
 /**
  * API types transcribed from spec/api-contract.md (§3 enumerations, §4 representations, §6 request bodies, §2 errors).
  *
- * The implementation plan (STEP-47) generates these from spec/openapi.yaml; that file does not exist yet, so they are
- * maintained by hand for now. Do not add fields or endpoints that are not in the contract.
+ * The implementation plan (STEP-47) generates these from spec/openapi.yaml. Generation isn't set up yet, so they are
+ * maintained by hand and must match both documents. Do not add fields or endpoints that are not in the contract.
  */
 
 export const TICKET_STATUSES = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED"] as const;

@@ -2,7 +2,7 @@
 
 | Scope | Sources | Last updated |
 |-------|---------|--------------|
-| Every AI-assisted step from the first prompt to the current state | [`docs/prompt-history.md`](prompt-history.md) (23 prompts), [`.specstory/history/`](../.specstory/history/) (full text), `docs/reviews/`, [`docs/ai-review.md`](ai-review.md), Git history | 2026-09-26 |
+| Every AI-assisted step from the first prompt to the current state | [`docs/prompt-history.md`](prompt-history.md) (38 prompts), [`.specstory/history/`](../.specstory/history/) (full text), `docs/reviews/`, [`docs/ai-review.md`](ai-review.md), Git history | 2026-09-26 |
 
 ## About the tools
 
@@ -146,13 +146,59 @@ The missing backend was deliberately **not** treated as a "fix". It's unimplemen
 
 ---
 
+## Additional phase — Backend completion, acceptance re-run and delivery
+**Tool:** Claude Code
+
+**Prompts:**
+- 07:45 / 07:55 / 08:20: "complete it" for milestones 09 (backend domain), 10 (backend API) and 11 (backend tests), then "whatevery left plz complete that".
+- 08:50: "run the final acceptance review again". 08:52: complete milestone 02 (requirements analysis, guide Prompt 1).
+- 09:10: will someone who clones the committed code get a working system?
+- 09:50 / 10:00: can I run it now; screenshot of the running UI.
+
+**Result:**
+- Backend ticket API implemented (commits `e1e305c`, `387b9a5`, `475297b`): domain and state machine, JPA + Flyway on PostgreSQL, REST API with Problem Details errors. 80 unit and 267 integration tests on PostgreSQL (Testcontainers), coverage gate, E2E 21/21 on the real stack.
+- Acceptance re-run: **accepted, 15/15 criteria PASS** ([report](reviews/2026-09-26-acceptance-review-2.md)).
+- `spec/requirements.md` rewritten as a full requirements analysis (actors, NFRs, assumptions, open questions, decisions).
+- Fresh-clone check: build, tests and E2E pass from a clean checkout. Three setup problems fixed (commit `81a5d4b`): database port clash with a local PostgreSQL, README run steps not copy-pasteable, no JDK 21 auto-download.
+
+**Human review:** the engineer ran the app locally from the README steps and shared a screenshot of it working (10:00).
+
+---
+
+## Additional phase — Product-owner sign-off and final improvements
+**Tool:** Claude Code
+
+**Prompt:** 10:10: sign off the assumptions, open questions and decisions; add frontend security headers, `openapi.yaml`, Copilot instructions, and a UI polish pass.
+
+**Human decisions** (answered in chat, 10:10):
+- All 22 assumptions in `spec/requirements.md` §15 **confirmed as built**; Q-1…Q-11 answered with the implemented behaviour.
+- **No reopening** of resolved tickets: REQ-11 stays as written.
+- D-1: **no login in v1; local or trusted internal networks only** ([ADR-0002](adr/0002-no-authentication-internal-deployment.md)).
+- Implement all four improvements.
+
+**Result:**
+- `spec/openapi.yaml` (OpenAPI 3.1, D-3). Redocly lint clean. Live backend responses for all 8 operations and every error class validated against it (28 of 28). A deliberately broken copy of the spec failed 8 of them, so the check can fail.
+- Security review M-2: nonce-based Content-Security-Policy per request (`frontend/src/proxy.ts`), `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS (TLS only), no `X-Powered-By`. Unit tests plus 3 E2E journeys that check real headers and that the CSP blocks nothing the app needs.
+- UI: status and priority badges, filter chips, card layout for ticket details, primary/danger buttons, dark mode. Fixes the Sort label wrapping away from its dropdown.
+- `.github/copilot-instructions.md`: Copilot adapter pointing at `AGENTS.md`.
+- Tests: frontend 95 (was 83), E2E 24/24 on PostgreSQL (was 21).
+
+**AI mistakes caught in this phase:**
+- The new description card was given `aria-label="Description"`, which collided with the edit form's Description field for screen readers. Existing frontend tests caught it, and it was removed.
+- The CSP was first verified only against the production build. Checking the engineer's running `npm run dev` showed 35 CSP errors from Next's dev overlay (inline styles). Fixed by allowing inline styles in development only; production stays nonce-only.
+
+---
+
 ## Current state and open human decisions
 
 | Item | Status |
 |------|--------|
-| Acceptance | **Not accepted:** the backend ticket API isn't implemented |
-| Phase 0 spec decisions (functional spec, contract semantics, `openapi.yaml`, pinned versions) | Open. Needed before backend STEP-08…39 |
-| Deployment boundary / no-auth decision record (security H-2) | Open |
-| JUnit Jupiter 6 instead of the JUnit 5 in TC-5 | Open, unreviewed deviation |
+| Acceptance | **Accepted: 15/15** ([re-run](reviews/2026-09-26-acceptance-review-2.md)) |
+| Requirements sign-off (§15 assumptions, Q-1…Q-11) | **Done** 2026-09-26 |
+| Deployment boundary / no-auth decision (security H-2, D-1) | **Decided**: [ADR-0002](adr/0002-no-authentication-internal-deployment.md) |
+| `openapi.yaml` (D-3) | **Done** |
+| Frontend security headers (security M-2) | **Done** |
+| D-2 `null` vs missing semantics, D-4 measurable NFRs | Open |
+| D-5 JUnit Jupiter 6 instead of the JUnit 5 in TC-5 | Open |
+| Request-size limits (security M-4), CI pipeline | Open |
 | Engineer sign-off of the AI-output audit (`ai-review.md` §12) | Open |
-| Docker for PostgreSQL / Testcontainers | Not running in this environment |

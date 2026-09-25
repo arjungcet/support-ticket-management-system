@@ -1,0 +1,591 @@
+openapi: 3.1.0
+info:
+  title: Support Ticket Management System API
+  version: 1.0.0
+  summary: REST API for support tickets, comments and the ticket status lifecycle.
+  description: |
+    Machine-readable form of [`spec/api-contract.md`](api-contract.md) (decision D-3 in `spec/requirements.md`).
+    The Markdown contract carries the full prose rules (error precedence §1.3, search semantics §6.2.1); this file
+    must be kept in sync with it. If they disagree, `api-contract.md` wins until both are corrected.
+
+    Conventions (api-contract.md §1):
+    - No authentication in v1: for local or trusted internal networks only (ADR-0002).
+    - All string inputs are trimmed before validation and storage. `minLength`/`maxLength` below are measured
+      **after trimming**; whitespace-only values are rejected as `BLANK`.
+    - Unknown request properties are rejected (`400 VALIDATION_FAILED`, field code `UNKNOWN_FIELD`), hence
+      `additionalProperties: false` on request bodies. Unknown query parameters are ignored.
+    - Nullable response fields are always present with value `null`, never omitted.
+    - Timestamps are ISO-8601 UTC with `Z`, at most microsecond precision.
+    - Modifying requests carry the `version` they last read (optimistic locking, §1.2). A mismatch returns
+      `409 TICKET_CONCURRENT_MODIFICATION` and changes nothing.
+    - Every response carries `X-Correlation-Id`. Every error body is RFC 9457 Problem Details
+      (`application/problem+json`, schema `Problem`).
+    - When several problems apply, only the first is reported, in this order: 415, 400 MALFORMED_REQUEST,
+      400 VALIDATION_FAILED, 404, 409 TICKET_CONCURRENT_MODIFICATION, business rules (409/422).
+  license:
+    name: Proprietary (assessment project)
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /api/v1
+    description: Relative to the frontend (proxied) or the backend (port 8080 by default)
+tags:
+  - name: Tickets
+    description: Create, list, search, filter, view, edit and assign tickets.
+  - name: Comments
+    description: Comments on a ticket, oldest first.
+  - name: Status
+    description: The ticket lifecycle state machine.
+security: []
+
+paths:
+  /tickets:
+    post:
+      tags: [Tickets]
+      operationId: createTicket
+      summary: Create a ticket (REQ-1)
+      description: A new ticket is always `OPEN` with `version` 0. `id`, `status`, `version` and timestamps are not accepted.
+      parameters:
+        - $ref: "#/components/parameters/CorrelationIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateTicketRequest" }
+            example: { title: Cannot log in to portal, description: User reports a 403 after password reset., priority: HIGH }
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              description: "`/api/v1/tickets/{id}`"
+              schema: { type: string }
+            X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TicketResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    get:
+      tags: [Tickets]
+      operationId: listTickets
+      summary: List, search (REQ-6) and filter (REQ-7) tickets (REQ-2)
+      description: |
+        `q` and `status` combine with AND; several `status` values combine with OR. Results are ordered by `sort`
+        and then by `id` in the same direction. A page beyond the end returns `200` with `content: []`.
+      parameters:
+        - $ref: "#/components/parameters/CorrelationIdHeader"
+        - $ref: "#/components/parameters/Page"
+        - name: size
+          in: query
+          description: Page size.
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: sort
+          in: query
+          description: |
+            `{field},{direction}`. Direction is optional and defaults to `asc`. Priority sorts by rank
+            (LOW < MEDIUM < HIGH < URGENT) and status by lifecycle order, not alphabetically.
+          schema:
+            type: string
+            default: createdAt,desc
+            pattern: "^(createdAt|updatedAt|priority|status)(,(asc|desc))?$"
+        - name: q
+          in: query
+          description: |
+            Keyword. Case-insensitive substring of title or description, matched as one phrase. `%`, `_` and `\`
+            match literally. Empty or whitespace-only is ignored.
+          schema: { type: string, maxLength: 100 }
+        - name: status
+          in: query
+          description: Repeat the parameter (`status=OPEN&status=IN_PROGRESS`) or comma-separate. Absent means all statuses.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: { $ref: "#/components/schemas/TicketStatus" }
+      responses:
+        "200":
+          description: A page of ticket summaries (may be empty)
+          headers:
+            X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TicketSummaryPage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /tickets/{ticketId}:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+    get:
+      tags: [Tickets]
+      operationId: getTicket
+      summary: Get ticket details (REQ-3)
+      description: Comments are not embedded; use `GET /tickets/{ticketId}/comments`.
+      responses:
+        "200":
+          description: The ticket
+          headers:
+            X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TicketResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/TicketNotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    patch:
+      tags: [Tickets]
+      operationId: updateTicket
+      summary: Update title, description or priority (REQ-4)
+      description: |
+        Absent fields are unchanged; `null` is not allowed. A request that changes nothing returns `200` with
+        `version` and `updatedAt` unchanged. Not allowed on `CLOSED` or `CANCELLED` tickets.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateTicketRequest" }
+            example: { version: 2, title: Cannot log in to customer portal, priority: URGENT }
+      responses:
+        "200":
+          description: Updated, or unchanged
+          headers:
+            X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TicketResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/TicketNotFound" }
+        "409": { $ref: "#/components/responses/ConcurrentModification" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/NotEditable" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /tickets/{ticketId}/assignee:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+    put:
+      tags: [Tickets]
+      operationId: assignTicket
+      summary: Assign or unassign a ticket (REQ-4)
+      description: |
+        The `assignee` key is required; `null`, empty or blank unassigns. Assigning never changes status.
+        Not allowed on `CLOSED` or `CANCELLED` tickets.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssignTicketRequest" }
+            examples:
+              assign: { value: { version: 3, assignee: maria.lopez } }
+              unassign: { value: { version: 4, assignee: null } }
+      responses:
+        "200":
+          description: Assigned, unassigned, or unchanged
+          headers:
+            X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TicketResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/TicketNotFound" }
+        "409": { $ref: "#/components/responses/ConcurrentModification" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/NotEditable" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /tickets/{ticketId}/comments:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+    get:
+      tags: [Comments]
+      operationId: listComments
+      summary: List a ticket's comments, oldest first (REQ-3, REQ-5)
+      description: Always ordered by `createdAt` then `id`, ascending. `sort` is not supported and is ignored.
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - name: size
+          in: query
+          description: Page size.
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        "200":
+          description: A page of comments (may be empty)
+          headers:
+            X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommentPage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/TicketNotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [Comments]
+      operationId: addComment
+      summary: Add a comment (REQ-5)
+      description: |
+        No `version` is required, and the ticket's `version` and `updatedAt` do not change.
+        Not allowed on `CLOSED` or `CANCELLED` tickets.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AddCommentRequest" }
+            example: { author: maria.lopez, body: Reset the account lock; asked user to retry. }
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              description: "`/api/v1/tickets/{ticketId}/comments/{commentId}` (no GET for a single comment in v1)"
+              schema: { type: string }
+            X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommentResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/TicketNotFound" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/NotCommentable" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /tickets/{ticketId}/status-transitions:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+    post:
+      tags: [Status]
+      operationId: changeTicketStatus
+      summary: Change a ticket's status (REQ-11, REQ-12)
+      description: |
+        Allowed moves: OPEN → IN_PROGRESS | CANCELLED; IN_PROGRESS → RESOLVED | CANCELLED; RESOLVED → CLOSED.
+        Everything else, including same-status moves and any move out of CLOSED or CANCELLED, is rejected with
+        `409 TICKET_INVALID_TRANSITION` and nothing changes. The version check comes first.
+        Success sets the matching lifecycle timestamp (`resolvedAt`, `closedAt` or `cancelledAt`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChangeStatusRequest" }
+            example: { version: 2, targetStatus: RESOLVED }
+      responses:
+        "200":
+          description: Status changed
+          headers:
+            X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TicketResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/TicketNotFound" }
+        "409":
+          description: "`TICKET_CONCURRENT_MODIFICATION` (stale version) or `TICKET_INVALID_TRANSITION`"
+          headers:
+            X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+              examples:
+                invalidTransition:
+                  value:
+                    type: https://supportdesk.example/problems/ticket-invalid-transition
+                    title: Invalid status transition
+                    status: 409
+                    detail: Ticket 42 cannot move from CLOSED to OPEN.
+                    instance: /api/v1/tickets/42/status-transitions
+                    code: TICKET_INVALID_TRANSITION
+                    correlationId: 0b6c1e0a-2f7d-4a63-8c9e-3d1b2a4f5e60
+                    timestamp: "2026-09-25T22:31:00Z"
+                    errors: []
+                    ticketId: 42
+                    currentStatus: CLOSED
+                    targetStatus: OPEN
+                    allowedTransitions: []
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  parameters:
+    TicketId:
+      name: ticketId
+      in: path
+      required: true
+      description: Not an integer or < 1 → `400 VALIDATION_FAILED` (`path`, `ticketId`, `INVALID_VALUE`). Unknown → `404`.
+      schema: { type: integer, format: int64, minimum: 1 }
+    Page:
+      name: page
+      in: query
+      description: 0-based page index.
+      schema: { type: integer, minimum: 0, default: 0 }
+    CorrelationIdHeader:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Optional client-supplied correlation id; the server generates one otherwise.
+      schema: { type: string, maxLength: 64, pattern: "^[A-Za-z0-9-]+$" }
+
+  headers:
+    XCorrelationId:
+      description: The request's correlation id (client-supplied or generated). Same value as `correlationId` in error bodies.
+      schema: { type: string }
+
+  responses:
+    BadRequest:
+      description: "`MALFORMED_REQUEST` (unparseable JSON or wrong JSON type) or `VALIDATION_FAILED` (all field errors together)"
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            validationFailed:
+              value:
+                type: https://supportdesk.example/problems/validation-failed
+                title: Validation failed
+                status: 400
+                detail: The request contains 2 invalid fields.
+                instance: /api/v1/tickets
+                code: VALIDATION_FAILED
+                correlationId: 7f3c2a9e-51b4-4d0e-9a51-0c2f5e8d1b77
+                timestamp: "2026-09-25T22:30:00.123456Z"
+                errors:
+                  - { location: body, field: title, code: BLANK, message: Title must not be blank. }
+                  - { location: body, field: priority, code: INVALID_VALUE, message: "Priority must be one of LOW, MEDIUM, HIGH, URGENT." }
+    TicketNotFound:
+      description: "`TICKET_NOT_FOUND` (extension `ticketId`)"
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    ConcurrentModification:
+      description: "`TICKET_CONCURRENT_MODIFICATION`: `version` mismatch (extensions `ticketId`, `currentVersion`)"
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    NotEditable:
+      description: "`TICKET_NOT_EDITABLE`: the ticket is CLOSED or CANCELLED (extensions `ticketId`, `currentStatus`)"
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    NotCommentable:
+      description: "`TICKET_NOT_COMMENTABLE`: the ticket is CLOSED or CANCELLED (extensions `ticketId`, `currentStatus`)"
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    UnsupportedMediaType:
+      description: "`UNSUPPORTED_MEDIA_TYPE`: body sent with a Content-Type other than application/json"
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    InternalError:
+      description: "`INTERNAL_ERROR`: unexpected failure. `detail` is always generic; quote `correlationId` to support."
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+    TicketStatus:
+      type: string
+      enum: [OPEN, IN_PROGRESS, RESOLVED, CLOSED, CANCELLED]
+    TicketPriority:
+      type: string
+      enum: [LOW, MEDIUM, HIGH, URGENT]
+    Timestamp:
+      type: string
+      format: date-time
+      description: UTC with `Z`, at most microsecond precision.
+      examples: ["2026-09-25T22:30:00.123456Z"]
+
+    CreateTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [title, description]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, minLength: 1, maxLength: 5000 }
+        priority:
+          $ref: "#/components/schemas/TicketPriority"
+          description: Defaults to `MEDIUM`.
+        assignee:
+          type: [string, "null"]
+          maxLength: 100
+          description: Absent, `null` or blank means unassigned.
+    UpdateTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [version]
+      description: At least one of `title`, `description`, `priority` (otherwise `NO_CHANGES_REQUESTED` with `field` null).
+      properties:
+        version: { type: integer, format: int64, minimum: 0 }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, minLength: 1, maxLength: 5000 }
+        priority: { $ref: "#/components/schemas/TicketPriority" }
+      anyOf:
+        - required: [title]
+        - required: [description]
+        - required: [priority]
+    AssignTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [version, assignee]
+      properties:
+        version: { type: integer, format: int64, minimum: 0 }
+        assignee:
+          type: [string, "null"]
+          maxLength: 100
+          description: "`null`, empty or blank unassigns."
+    AddCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [author, body]
+      properties:
+        author: { type: string, minLength: 1, maxLength: 100, description: Free text (no authentication in v1). }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+    ChangeStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [version, targetStatus]
+      properties:
+        version: { type: integer, format: int64, minimum: 0 }
+        targetStatus: { $ref: "#/components/schemas/TicketStatus" }
+
+    TicketResponse:
+      type: object
+      additionalProperties: false
+      required: [id, title, description, priority, status, assignee, createdAt, updatedAt, resolvedAt, closedAt, cancelledAt, version, allowedTransitions]
+      properties:
+        id: { type: integer, format: int64, minimum: 1 }
+        title: { type: string }
+        description: { type: string }
+        priority: { $ref: "#/components/schemas/TicketPriority" }
+        status: { $ref: "#/components/schemas/TicketStatus" }
+        assignee: { type: [string, "null"], description: "`null` = unassigned" }
+        createdAt: { $ref: "#/components/schemas/Timestamp" }
+        updatedAt: { $ref: "#/components/schemas/Timestamp" }
+        resolvedAt: { oneOf: [{ $ref: "#/components/schemas/Timestamp" }, { type: "null" }] }
+        closedAt: { oneOf: [{ $ref: "#/components/schemas/Timestamp" }, { type: "null" }] }
+        cancelledAt: { oneOf: [{ $ref: "#/components/schemas/Timestamp" }, { type: "null" }] }
+        version: { type: integer, format: int64, minimum: 0, description: Send back on modifying requests. }
+        allowedTransitions:
+          type: array
+          description: Statuses this ticket can move to now, in lifecycle order. Drives the UI's status buttons.
+          items: { $ref: "#/components/schemas/TicketStatus" }
+    TicketSummaryResponse:
+      type: object
+      additionalProperties: false
+      required: [id, title, priority, status, assignee, createdAt, updatedAt]
+      properties:
+        id: { type: integer, format: int64, minimum: 1 }
+        title: { type: string }
+        priority: { $ref: "#/components/schemas/TicketPriority" }
+        status: { $ref: "#/components/schemas/TicketStatus" }
+        assignee: { type: [string, "null"] }
+        createdAt: { $ref: "#/components/schemas/Timestamp" }
+        updatedAt: { $ref: "#/components/schemas/Timestamp" }
+    CommentResponse:
+      type: object
+      additionalProperties: false
+      required: [id, ticketId, author, body, createdAt]
+      properties:
+        id: { type: integer, format: int64, minimum: 1 }
+        ticketId: { type: integer, format: int64, minimum: 1 }
+        author: { type: string }
+        body: { type: string }
+        createdAt: { $ref: "#/components/schemas/Timestamp" }
+
+    PageMetadata:
+      type: object
+      additionalProperties: false
+      required: [number, size, totalElements, totalPages]
+      properties:
+        number: { type: integer, minimum: 0, description: 0-based page index as requested. }
+        size: { type: integer, minimum: 1, description: Requested page size. }
+        totalElements: { type: integer, format: int64, minimum: 0 }
+        totalPages: { type: integer, minimum: 0, description: "`0` when `totalElements` is `0`." }
+    TicketSummaryPage:
+      type: object
+      additionalProperties: false
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: "#/components/schemas/TicketSummaryResponse" }
+        page: { $ref: "#/components/schemas/PageMetadata" }
+    CommentPage:
+      type: object
+      additionalProperties: false
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: "#/components/schemas/CommentResponse" }
+        page: { $ref: "#/components/schemas/PageMetadata" }
+
+    Problem:
+      type: object
+      description: |
+        RFC 9457 Problem Details with project extensions. Clients branch on `code`, never on `title`/`detail` text.
+        Business errors add extensions: `ticketId`, `currentVersion`, `currentStatus`, `targetStatus`,
+        `allowedTransitions` (see `ProblemCode`). The submitted value is never echoed back.
+      required: [type, title, status, detail, instance, code, correlationId, timestamp, errors]
+      properties:
+        type: { type: string, format: uri, description: "`https://supportdesk.example/problems/{kebab-case-code}`" }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string, description: Safe to show to end users. }
+        instance: { type: string, description: Request path without query string. }
+        code: { $ref: "#/components/schemas/ProblemCode" }
+        correlationId: { type: string }
+        timestamp: { $ref: "#/components/schemas/Timestamp" }
+        errors:
+          type: array
+          description: Non-empty only for `VALIDATION_FAILED`.
+          items: { $ref: "#/components/schemas/FieldError" }
+        ticketId: { type: integer, format: int64 }
+        currentVersion: { type: integer, format: int64 }
+        currentStatus: { $ref: "#/components/schemas/TicketStatus" }
+        targetStatus: { $ref: "#/components/schemas/TicketStatus" }
+        allowedTransitions:
+          type: array
+          items: { $ref: "#/components/schemas/TicketStatus" }
+    ProblemCode:
+      type: string
+      enum:
+        - MALFORMED_REQUEST
+        - VALIDATION_FAILED
+        - TICKET_NOT_FOUND
+        - RESOURCE_NOT_FOUND
+        - METHOD_NOT_ALLOWED
+        - TICKET_CONCURRENT_MODIFICATION
+        - TICKET_INVALID_TRANSITION
+        - UNSUPPORTED_MEDIA_TYPE
+        - TICKET_NOT_EDITABLE
+        - TICKET_NOT_COMMENTABLE
+        - INTERNAL_ERROR
+    FieldError:
+      type: object
+      additionalProperties: false
+      required: [location, field, code, message]
+      properties:
+        location: { type: string, enum: [body, query, path] }
+        field:
+          type: [string, "null"]
+          description: JSON property or parameter name; `null` for an object-level rule.
+        code:
+          type: string
+          enum: [REQUIRED, BLANK, TOO_LONG, INVALID_VALUE, UNKNOWN_FIELD, NO_CHANGES_REQUESTED]
+        message: { type: string, description: Safe to display next to the field. }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -9,7 +10,9 @@ export const metadata: Metadata = {
   description: "Support Ticket Management System",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Render per request so Next.js can put the CSP nonce from src/proxy.ts on its scripts.
+  await connection();
   return (
     <html lang="en">
       <body>

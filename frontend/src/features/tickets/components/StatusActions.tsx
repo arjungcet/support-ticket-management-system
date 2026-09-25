@@ -39,7 +39,13 @@ export function StatusActions({ ticket }: { ticket: TicketResponse }) {
         <p className="muted">No further status changes are possible.</p>
       ) : (
         ticket.allowedTransitions.map((target) => (
-          <button key={target} type="button" disabled={changeStatus.isPending} onClick={() => void move(target)}>
+          <button
+            key={target}
+            type="button"
+            className={target === "CANCELLED" ? "danger" : "primary"}
+            disabled={changeStatus.isPending}
+            onClick={() => void move(target)}
+          >
             {TRANSITION_LABELS[target]}
           </button>
         ))

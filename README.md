@@ -12,11 +12,11 @@ TypeScript · JUnit (Jupiter) · Vitest + Testing Library + MSW · Playwright.
 
 | Area | State |
 |------|-------|
-| Specifications | Drafted and reviewed. [Requirements analysis](spec/requirements.md) complete: assumptions, 11 open questions and 6 decisions awaiting sign-off. Phase 0 decisions still open ([spec review](docs/reviews/2026-09-26-spec-review.md)) |
+| Specifications | Reviewed. [Requirements](spec/requirements.md) signed off by the product owner (assumptions confirmed as built, Q-1…Q-11 answered). Machine-readable contract: [`spec/openapi.yaml`](spec/openapi.yaml). Still open: decisions D-2, D-4, D-5 |
 | Backend | Ticket API implemented: domain + state machine, PostgreSQL persistence (JPA + Flyway), REST API, validation, Problem Details errors |
-| Frontend | Implemented against the API contract: create, list, details, edit, assignee, comments, search, filter, status transitions, error handling |
-| Tests | Backend: 80 unit (incl. ArchUnit) + 267 integration tests on PostgreSQL (Testcontainers), coverage gate ≥ 80 % line / 70 % branch. Frontend: 83. E2E: 21/21 against the real backend on PostgreSQL |
-| Acceptance | **Accepted: 15/15 criteria PASS** ([re-run](docs/reviews/2026-09-26-acceptance-review-2.md)), with open conditions: auth/deployment decision, Phase 0 spec decisions, CI. Earlier run: [acceptance review](docs/reviews/2026-09-26-acceptance-review.md) |
+| Frontend | Implemented against the API contract: create, list, details, edit, assignee, comments, search, filter, status transitions, error handling. Status/priority badges, dark mode, nonce-based Content-Security-Policy and security headers |
+| Tests | Backend: 80 unit (incl. ArchUnit) + 267 integration tests on PostgreSQL (Testcontainers), coverage gate ≥ 80 % line / 70 % branch. Frontend: 95. E2E: 24/24 against the real backend on PostgreSQL (incl. security headers) |
+| Acceptance | **Accepted: 15/15 criteria PASS** ([re-run](docs/reviews/2026-09-26-acceptance-review-2.md)), Since then: deployment boundary decided ([ADR-0002](docs/adr/0002-no-authentication-internal-deployment.md): no login, local/internal networks only) and security headers added. Still open: CI, decisions D-2/D-4/D-5. Earlier run: [acceptance review](docs/reviews/2026-09-26-acceptance-review.md) |
 
 ## Repository layout
 
@@ -35,7 +35,7 @@ skills/             reusable AI skills (documentation standards and templates)
 commands/           reusable AI commands: review-spec, generate-tests, review-code
 docs/               prompt history, AI-output audit, ADRs, review reports
 .specstory/history/ full text of every prompt
-AGENTS.md, CLAUDE.md, .cursor/, .claude/   entry points and adapters for AI coding tools
+AGENTS.md, CLAUDE.md, .cursor/, .claude/, .github/copilot-instructions.md   entry points and adapters for AI coding tools
 ```
 
 ## Prerequisites
@@ -105,10 +105,10 @@ cd e2e && npm run e2e:stub                     # against the contract stub (vali
 | Topic | Where |
 |-------|-------|
 | Requirements and design | [`spec/`](spec/): start with [`requirements.md`](spec/requirements.md) and [`architecture.md`](spec/architecture.md) |
-| API contract and state machine | [`spec/api-contract.md`](spec/api-contract.md), [`spec/state-machine.md`](spec/state-machine.md) |
+| API contract and state machine | [`spec/api-contract.md`](spec/api-contract.md), [`spec/openapi.yaml`](spec/openapi.yaml) (OpenAPI 3.1), [`spec/state-machine.md`](spec/state-machine.md) |
 | Test strategy and implementation plan | [`spec/test-strategy.md`](spec/test-strategy.md), [`spec/implementation-plan.md`](spec/implementation-plan.md) |
 | Engineering rules | [`rules/`](rules/) |
-| Decisions | [`docs/adr/`](docs/adr/) |
+| Decisions | [`docs/adr/`](docs/adr/): PostgreSQL (0001), no authentication / internal deployment only (0002) |
 | Reviews (spec, code, security, E2E, acceptance, fixes) | [`docs/reviews/`](docs/reviews/) |
 | AI-output audit | [`docs/ai-review.md`](docs/ai-review.md) |
 | AI development history (tools, prompts, results, human decisions per phase) | [`docs/ai-development-history.md`](docs/ai-development-history.md) |

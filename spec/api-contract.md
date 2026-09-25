@@ -5,8 +5,8 @@
 | Draft — awaiting review | 2026-09-25 | [`requirements.md`](requirements.md), [`architecture.md`](architecture.md) §8, §10, §14, [`data-model.md`](data-model.md), [`rules/api-standards.md`](../rules/api-standards.md), [ADR-0001](../docs/adr/0001-use-postgresql.md) |
 
 This is the **normative API contract**. Backend controllers, frontend client types, MSW mocks and API tests are all
-derived from it. A machine-readable OpenAPI 3.1 file (`spec/openapi.yaml`) will be produced from this document before
-implementation starts. If the two ever disagree, this document wins until it is corrected.
+derived from it. Its machine-readable OpenAPI 3.1 form is [`openapi.yaml`](openapi.yaml) (decision D-3). Keep the two
+in sync. If they ever disagree, this document wins until both are corrected.
 
 > Decisions resting on unanswered product questions are marked **⚠ A-n** (architecture), **⚠ DM-n** (data model) or
 > **⚠ API-n** (new here, §9). The functional spec may still change them. If it does, this contract is updated first.
@@ -610,7 +610,8 @@ Every endpoint can also return `500 INTERNAL_ERROR`. Wrong methods return `405`,
 
 ### 8.1 Frontend
 
-- Generate TypeScript types from `spec/openapi.yaml` once it exists. Until then, this document is the reference.
+- TypeScript types can be generated from [`openapi.yaml`](openapi.yaml). The current client types in
+  `frontend/src/lib/api/types.ts` are hand-written from this document.
 - Parse every non-2xx response with `Content-Type: application/problem+json` into a single `ApiError` type. Branch
   on `code`.
 - `VALIDATION_FAILED`: map `errors[]` with `location: "body"` onto form fields by `field`. Show entries with
@@ -664,3 +665,4 @@ New:
 ## Changelog
 
 - 2026-09-25 — Initial draft.
+- 2026-09-26 — `openapi.yaml` added (D-3). No contract change.

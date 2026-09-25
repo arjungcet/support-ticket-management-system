@@ -6,7 +6,8 @@ import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { FIELD_LIMITS, TICKET_STATUSES, type TicketStatus } from "@/lib/api/types";
 import type { TicketListParams } from "../api";
 import { useTickets } from "../hooks/queries";
-import { PRIORITY_LABELS, STATUS_LABELS, formatTimestamp } from "../labels";
+import { STATUS_LABELS, formatTimestamp } from "../labels";
+import { PriorityBadge, StatusBadge } from "./Badges";
 
 const SORT_OPTIONS = [
   { value: "createdAt,desc", label: "Newest first" },
@@ -65,19 +66,21 @@ export function TicketListView({ params, onParamsChange, searchDebounceMs = 300 
   return (
     <section aria-label="Tickets">
       <div className="toolbar">
-        <label htmlFor="ticket-search">Search</label>
-        <input
-          id="ticket-search"
-          type="search"
-          value={keyword}
-          maxLength={FIELD_LIMITS.q}
-          placeholder="Search title or description"
-          onChange={(event) => setKeyword(event.target.value)}
-        />
-        <fieldset>
+        <div className="control">
+          <label htmlFor="ticket-search">Search</label>
+          <input
+            id="ticket-search"
+            type="search"
+            value={keyword}
+            maxLength={FIELD_LIMITS.q}
+            placeholder="Search title or description"
+            onChange={(event) => setKeyword(event.target.value)}
+          />
+        </div>
+        <fieldset className="chips">
           <legend>Status</legend>
           {TICKET_STATUSES.map((status) => (
-            <label key={status} className="inline">
+            <label key={status} className="chip">
               <input
                 type="checkbox"
                 checked={params.status.includes(status)}
@@ -87,50 +90,61 @@ export function TicketListView({ params, onParamsChange, searchDebounceMs = 300 
             </label>
           ))}
         </fieldset>
-        <label htmlFor="ticket-sort">Sort</label>
-        <select
-          id="ticket-sort"
-          value={params.sort}
-          onChange={(event) => onParamsChange({ ...params, sort: event.target.value, page: 0 })}
-        >
-          {SORT_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        {/* Label and select stay together so the row can't wrap between them. */}
+        <div className="control">
+          <label htmlFor="ticket-sort">Sort</label>
+          <select
+            id="ticket-sort"
+            value={params.sort}
+            onChange={(event) => onParamsChange({ ...params, sort: event.target.value, page: 0 })}
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {error && <ErrorAlert error={error} onRetry={() => void refetch()} />}
       {isPending && !error && <p>Loading tickets…</p>}
-      {data && data.content.length === 0 && <p>No tickets match.</p>}
+      {data && data.content.length === 0 && <p className="empty">No tickets match.</p>}
       {data && data.content.length > 0 && (
-        <table aria-busy={isFetching}>
-          <thead>
-            <tr>
-              <th scope="col">#</th>
-              <th scope="col">Title</th>
-              <th scope="col">Status</th>
-              <th scope="col">Priority</th>
-              <th scope="col">Assignee</th>
-              <th scope="col">Last modified</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.content.map((ticket) => (
-              <tr key={ticket.id}>
-                <td>#{ticket.id}</td>
-                <td>
-                  <Link href={`/tickets/${ticket.id}`}>{ticket.title}</Link>
-                </td>
-                <td>{STATUS_LABELS[ticket.status]}</td>
-                <td>{PRIORITY_LABELS[ticket.priority]}</td>
-                <td>{ticket.assignee ?? "Unassigned"}</td>
-                <td>{formatTimestamp(ticket.updatedAt)}</td>
+        <div className="table-card">
+          <table aria-busy={isFetching}>
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Title</th>
+                <th scope="col">Status</th>
+                <th scope="col">Priority</th>
+                <th scope="col">Assignee</th>
+                <th scope="col">Last modified</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.content.map((ticket) => (
+                <tr key={ticket.id}>
+                  <td className="muted">#{ticket.id}</td>
+                  <td>
+                    <Link className="ticket-link" href={`/tickets/${ticket.id}`}>
+                      {ticket.title}
+                    </Link>
+                  </td>
+                  <td>
+                    <StatusBadge status={ticket.status} />
+                  </td>
+                  <td>
+                    <PriorityBadge priority={ticket.priority} />
+                  </td>
+                  <td className={ticket.assignee ? undefined : "muted"}>{ticket.assignee ?? "Unassigned"}</td>
+                  <td className="muted">{formatTimestamp(ticket.updatedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {data && totalPages > 0 && (
