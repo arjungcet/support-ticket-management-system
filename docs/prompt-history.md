@@ -273,3 +273,11 @@ Full per-session transcripts live in `.specstory/history/`.
 **Full text:** [.specstory/history/2026-09-26_07-20-prompt-service-name.md](../.specstory/history/2026-09-26_07-20-prompt-service-name.md)
 
 > support-ticket-management-service
+
+---
+
+## 2026-09-26 07:35 — Repository name
+**Phase:** Repository structure
+**Full text:** [.specstory/history/2026-09-26_07-35-prompt-repo-name-system.md](../.specstory/history/2026-09-26_07-35-prompt-repo-name-system.md)
+
+> The repository and folder name is `support-ticket-management-system` (same as the GitHub repo); adjust references.

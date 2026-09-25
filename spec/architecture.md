@@ -82,7 +82,7 @@ The architecture leaves extension points for them (§19).
 ## 4. Repository and module structure
 
 ```
-support-ticket-management-service/
+support-ticket-management-system/
 ├── backend/                          # single Gradle project (⚠ A-8: not multi-module)
 │   ├── build.gradle.kts
 │   ├── settings.gradle.kts

@@ -35,12 +35,12 @@ approximate and in session order.
 - Entry points for AI tools: `AGENTS.md` and `CLAUDE.md`.
 - Cursor and Claude adapters (symlinks to `commands/` and `skills/`).
 - `.gitignore`, and project memory for the workflow and logging rules.
-- After the structure prompt: a root `README.md`, frontend tests moved to `frontend/tests/`, and the folder renamed to `support-ticket-management-sdd`, then (per the engineer, 07:20) to `support-ticket-management-service`.
+- After the structure prompt: a root `README.md`, frontend tests moved to `frontend/tests/`, and the folder temporarily renamed (`support-ticket-management-sdd`, then `support-ticket-management-service`). The engineer then settled on **`support-ticket-management-system`** (07:35), matching the GitHub repository.
 
 **Human decisions:**
 - **Gradle instead of Maven** (22:40). When the pasted layout later showed `pom.xml`, the AI asked, and the engineer chose **"Keep Gradle"**.
 - The engineer initialised Git and made the initial commit `0aee402` (author "Arjun", 2026-09-25).
-- For the pasted layout, the engineer chose: add the README, create `frontend/tests/`, and rename the root folder. They later settled on the folder name **`support-ticket-management-service`**. The GitHub remote is still `arjungcet/support-ticket-management-system`.
+- For the pasted layout, the engineer chose: add the README, create `frontend/tests/`, and rename the root folder. The final repository and folder name is **`support-ticket-management-system`**, the same as the GitHub remote `arjungcet/support-ticket-management-system`.
 
 ---
 
