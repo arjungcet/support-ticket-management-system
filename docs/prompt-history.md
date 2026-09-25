@@ -281,3 +281,12 @@ Full per-session transcripts live in `.specstory/history/`.
 **Full text:** [.specstory/history/2026-09-26_07-35-prompt-repo-name-system.md](../.specstory/history/2026-09-26_07-35-prompt-repo-name-system.md)
 
 > The repository and folder name is `support-ticket-management-system` (same as the GitHub repo); adjust references.
+
+---
+
+## 2026-09-26 07:45 — Run git commands; complete backend milestones 09–11
+**Phase:** Backend
+**Full text:** [.specstory/history/2026-09-26_07-45-prompt-backend-milestones.md](../.specstory/history/2026-09-26_07-45-prompt-backend-milestones.md)
+
+> Run the two suggested git commands (commit the name fix, fast-forward main), then complete milestones 09 backend
+> domain, 10 backend API and 11 backend tests so the 241 spec-based API tests pass.
