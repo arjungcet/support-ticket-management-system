@@ -54,7 +54,7 @@ class TicketController {
         Validation validation = new Validation();
         JsonBody body = JsonBody.parse(rawBody, validation, "title", "description", "priority", "assignee");
         String title = body.text("title", FieldLimits.TITLE, REQUIRED);
-        String description = body.text("description", FieldLimits.DESCRIPTION, REQUIRED);
+        String description = body.multiLineText("description", FieldLimits.DESCRIPTION, REQUIRED);
         TicketPriority priority = body.enumValue("priority", TicketPriority.class, OPTIONAL_CLEARABLE);
         String assignee = body.text("assignee", FieldLimits.ASSIGNEE, OPTIONAL_CLEARABLE);
         validation.throwIfInvalid();
@@ -99,7 +99,7 @@ class TicketController {
         long id = RequestParams.ticketId(ticketId, validation);
         Long version = body.version();
         String title = body.text("title", FieldLimits.TITLE, OPTIONAL);
-        String description = body.text("description", FieldLimits.DESCRIPTION, OPTIONAL);
+        String description = body.multiLineText("description", FieldLimits.DESCRIPTION, OPTIONAL);
         TicketPriority priority = body.enumValue("priority", TicketPriority.class, OPTIONAL);
         if (validation.isEmpty() && !body.hasAny("title", "description", "priority")) {
             validation.add(FieldError.BODY, null, "NO_CHANGES_REQUESTED",

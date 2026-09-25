@@ -50,7 +50,10 @@ final class RequestParams {
     /** Trimmed keyword; empty means "no keyword filter". */
     static String keyword(String raw, Validation validation) {
         String keyword = raw == null ? "" : raw.strip();
-        if (FieldLimits.length(keyword) > FieldLimits.SEARCH_KEYWORD) {
+        if (JsonBody.containsControlCharacter(keyword, false)) {
+            validation.add(FieldError.QUERY, "q", "INVALID_VALUE",
+                    "The search keyword must not contain control characters.");
+        } else if (FieldLimits.length(keyword) > FieldLimits.SEARCH_KEYWORD) {
             validation.add(FieldError.QUERY, "q", "TOO_LONG",
                     "The search keyword must be at most " + FieldLimits.SEARCH_KEYWORD + " characters.");
         }

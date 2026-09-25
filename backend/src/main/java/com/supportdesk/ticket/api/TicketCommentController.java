@@ -36,7 +36,7 @@ class TicketCommentController {
         JsonBody body = JsonBody.parse(rawBody, validation, "author", "body");
         long id = RequestParams.ticketId(ticketId, validation);
         String author = body.text("author", FieldLimits.COMMENT_AUTHOR, REQUIRED);
-        String text = body.text("body", FieldLimits.COMMENT_BODY, REQUIRED);
+        String text = body.multiLineText("body", FieldLimits.COMMENT_BODY, REQUIRED);
         validation.throwIfInvalid();
 
         CommentView comment = comments.add(new AddComment(id, author, text));

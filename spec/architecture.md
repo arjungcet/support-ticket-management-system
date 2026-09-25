@@ -449,9 +449,9 @@ Four layers of defence. Each rule is **owned** by exactly one layer, and the oth
   - Enums stored as `varchar` + `CHECK`.
   - FK `ticket_comment.ticket_id → ticket.id` with `ON DELETE RESTRICT` (tickets are never hard-deleted in v1).
 - **Indexes:** `ticket(status, created_at DESC, id DESC)`, `ticket(created_at DESC, id DESC)`, `ticket_comment(ticket_id, created_at, id)`. Search starts with a plain
-  `LIKE` scan, which is fine at the expected volume (⚠ A-1). **Upgrade path**, driven by measurement: the `pg_trgm`
-  extension with GIN indexes on `lower(title)`/`lower(description)`, then `tsvector` full-text search. Both are
-  PostgreSQL-only and would be marked as such in the migration.
+  `LIKE` scan. **Upgrade path**, driven by measurement: the `pg_trgm` extension with GIN indexes on
+  `lower(title)`/`lower(description)`, then `tsvector` full-text search. Step 1 (`pg_trgm`) is **implemented** in the
+  PostgreSQL-only migration V3, because the NFR-3 measurement at 100 000 tickets needed it (data-model §13.3).
 - **Connection pool:** HikariCP (Spring Boot default). Pool size is set through configuration.
 - Credentials come only from environment variables (`rules/security.md`).
 

@@ -106,7 +106,7 @@ export function CommentsSection({ ticket }: { ticket: TicketResponse }) {
             <input {...register("author", textRules(FIELD_LIMITS.author, true))} />
           </Field>
           <Field id="comment-body" label="Comment" error={errors.body?.message}>
-            <textarea rows={4} {...register("body", textRules(FIELD_LIMITS.body, true))} />
+            <textarea rows={4} {...register("body", textRules(FIELD_LIMITS.body, true, true))} />
           </Field>
           <button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Adding…" : "Add comment"}

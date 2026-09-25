@@ -11,7 +11,9 @@ info:
     Conventions (api-contract.md §1):
     - No authentication in v1: for local or trusted internal networks only (ADR-0002).
     - All string inputs are trimmed before validation and storage. `minLength`/`maxLength` below are measured
-      **after trimming**; whitespace-only values are rejected as `BLANK`.
+      **after trimming**; whitespace-only values are rejected as `BLANK`. Control characters (U+0000–U+001F) are
+      rejected as `INVALID_VALUE`, except tab, line feed and carriage return in `description` and comment `body`.
+    - Request bodies are limited to 128 KB; larger bodies get `413 PAYLOAD_TOO_LARGE`.
     - Unknown request properties are rejected (`400 VALIDATION_FAILED`, field code `UNKNOWN_FIELD`), hence
       `additionalProperties: false` on request bodies. Unknown query parameters are ignored.
     - Nullable response fields are always present with value `null`, never omitted.
@@ -20,7 +22,7 @@ info:
       `409 TICKET_CONCURRENT_MODIFICATION` and changes nothing.
     - Every response carries `X-Correlation-Id`. Every error body is RFC 9457 Problem Details
       (`application/problem+json`, schema `Problem`).
-    - When several problems apply, only the first is reported, in this order: 415, 400 MALFORMED_REQUEST,
+    - When several problems apply, only the first is reported, in this order: 415, 413, 400 MALFORMED_REQUEST,
       400 VALIDATION_FAILED, 404, 409 TICKET_CONCURRENT_MODIFICATION, business rules (409/422).
   license:
     name: Proprietary (assessment project)
@@ -64,6 +66,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/TicketResponse" }
         "400": { $ref: "#/components/responses/BadRequest" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "500": { $ref: "#/components/responses/InternalError" }
     get:
@@ -158,6 +161,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "404": { $ref: "#/components/responses/TicketNotFound" }
         "409": { $ref: "#/components/responses/ConcurrentModification" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "422": { $ref: "#/components/responses/NotEditable" }
         "500": { $ref: "#/components/responses/InternalError" }
@@ -192,6 +196,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "404": { $ref: "#/components/responses/TicketNotFound" }
         "409": { $ref: "#/components/responses/ConcurrentModification" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "422": { $ref: "#/components/responses/NotEditable" }
         "500": { $ref: "#/components/responses/InternalError" }
@@ -248,6 +253,7 @@ paths:
               schema: { $ref: "#/components/schemas/CommentResponse" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "404": { $ref: "#/components/responses/TicketNotFound" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "422": { $ref: "#/components/responses/NotCommentable" }
         "500": { $ref: "#/components/responses/InternalError" }
@@ -304,6 +310,7 @@ paths:
                     currentStatus: CLOSED
                     targetStatus: OPEN
                     allowedTransitions: []
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "500": { $ref: "#/components/responses/InternalError" }
 
@@ -377,6 +384,13 @@ components:
           schema: { $ref: "#/components/schemas/Problem" }
     NotCommentable:
       description: "`TICKET_NOT_COMMENTABLE`: the ticket is CLOSED or CANCELLED (extensions `ticketId`, `currentStatus`)"
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    PayloadTooLarge:
+      description: "`PAYLOAD_TOO_LARGE`: request body larger than 128 KB"
       headers:
         X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
       content:
@@ -572,6 +586,7 @@ components:
         - METHOD_NOT_ALLOWED
         - TICKET_CONCURRENT_MODIFICATION
         - TICKET_INVALID_TRANSITION
+        - PAYLOAD_TOO_LARGE
         - UNSUPPORTED_MEDIA_TYPE
         - TICKET_NOT_EDITABLE
         - TICKET_NOT_COMMENTABLE

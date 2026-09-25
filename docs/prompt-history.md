@@ -352,3 +352,9 @@ Full per-session transcripts live in `.specstory/history/`.
 **Full text:** [.specstory/history/2026-09-26_10-10-prompt-decisions-and-improvements.md](../.specstory/history/2026-09-26_10-10-prompt-decisions-and-improvements.md)
 
 > Sign off assumptions / Q-1…Q-11 / D-1…D-6; add frontend security headers, openapi.yaml, .github/copilot-instructions.md.
+
+## 2026-09-26 10:50 — Complete what is left
+**Phase:** Final fixes (16)
+**Full text:** [.specstory/history/2026-09-26_10-50-prompt-complete-remaining.md](../.specstory/history/2026-09-26_10-50-prompt-complete-remaining.md)
+
+> Complete the remaining items: CI, request-size limits, decisions D-2/D-4/D-5.

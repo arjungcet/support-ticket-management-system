@@ -12,6 +12,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   METHOD_NOT_ALLOWED: "This action is not supported.",
   TICKET_CONCURRENT_MODIFICATION: "This ticket was changed by someone else. Reload to see the latest version.",
   TICKET_INVALID_TRANSITION: "That status change is not allowed from the ticket's current status.",
+  PAYLOAD_TOO_LARGE: "The request is too large to send.",
   UNSUPPORTED_MEDIA_TYPE: "The request format is not supported.",
   TICKET_NOT_EDITABLE: "Closed or cancelled tickets can't be edited.",
   TICKET_NOT_COMMENTABLE: "Closed or cancelled tickets can't receive new comments.",

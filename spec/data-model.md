@@ -182,6 +182,7 @@ Adding an enum value requires a migration that replaces the `CHECK` constraint (
 | `ix_ticket_status_created_at` | `ticket` | `status, created_at DESC, id DESC` | REQ-7 status filter combined with the default order |
 | `pk_ticket_comment` | `ticket_comment` | `id` | PK (implicit) |
 | `ix_ticket_comment_ticket_created` | `ticket_comment` | `ticket_id, created_at, id` | FK index + ordered, paginated comment retrieval per ticket |
+| `ix_ticket_title_trgm`, `ix_ticket_description_trgm` | `ticket` | GIN `lower(title)` / `lower(description)` `gin_trgm_ops` | **PostgreSQL only** (V3). REQ-6 substring search (§13.3), added after measurement (NFR-3) |
 
 **Deliberately not indexed in v1:**
 - `assignee`: no requirement to filter by it.
@@ -289,7 +290,7 @@ backend/src/main/resources/db/
 │   ├── common/                 # portable SQL — runs on PostgreSQL and H2
 │   │   ├── V1__create_ticket.sql
 │   │   └── V2__create_ticket_comment.sql
-│   └── postgresql/             # PostgreSQL-only, e.g. future pg_trgm (empty in v1)
+│   └── postgresql/             # PostgreSQL-only: V3 pg_trgm search indexes (skipped on H2)
 └── seed/                       # optional local demo data, repeatable R__ scripts (local profile only)
 ```
 
@@ -319,6 +320,7 @@ backend/src/main/resources/db/
 |---------|---------|
 | `V1__create_ticket.sql` | `ticket` table, all constraints from §10 for `ticket`, indexes `ix_ticket_created_at`, `ix_ticket_status_created_at` |
 | `V2__create_ticket_comment.sql` | `ticket_comment` table, FK, constraints, `ix_ticket_comment_ticket_created` |
+| `postgresql/V3__search_trigram_indexes.sql` | `CREATE EXTENSION pg_trgm` and the two trigram GIN indexes (§13.3). PostgreSQL only |
 
 Changing enum values later: `ALTER TABLE ticket DROP CONSTRAINT ck_ticket_priority` followed by `ADD CONSTRAINT …`
 with the new list, in the same migration, before the code that uses the new value is deployed.
@@ -350,9 +352,10 @@ rejected because it duplicates data (⚠ DM-9).
 
 ### 13.3 Performance and upgrade path
 
-- A leading-wildcard `LIKE` means a sequential scan of `ticket`. At the expected scale (≤ 100k tickets, ⚠ A-1) this
-  stays well within interactive latency. No search index in v1.
-- **Upgrade step 1 (PostgreSQL-only, `db/migration/postgresql`):** `CREATE EXTENSION pg_trgm` + GIN trigram indexes
+- A leading-wildcard `LIKE` means a sequential scan of `ticket`. **Measured 2026-09-26** (NFR-3, 100 000 tickets):
+  a search with no match took p95 545 ms, over the 500 ms target. So upgrade step 1 is now **implemented** (V3); the
+  same search takes p95 10 ms.
+- **Upgrade step 1 (implemented, PostgreSQL-only, `db/migration/postgresql`):** `CREATE EXTENSION pg_trgm` + GIN trigram indexes
   on `lower(title)` and `lower(description)`. The existing `lower(col) LIKE '%…%'` queries then use the index with
   **no query change**. On H2 the migration is skipped and queries still work, just unindexed.
 - **Upgrade step 2:** full-text search (`tsvector` column + GIN index, stemming, ranking). This changes query
@@ -400,7 +403,7 @@ every build.
 | REQ-3 View details | PK lookup + `ix_ticket_comment_ticket_created` for comments |
 | REQ-4 Update fields | Mutable `title`, `description`, `priority`, `assignee`. `version` for optimistic locking |
 | REQ-5 Add comments | `ticket_comment` + FK |
-| REQ-6 Keyword search | §13. Case-insensitive substring on title/description |
+| REQ-6 Keyword search | §13. Case-insensitive substring on title/description; trigram indexes on PostgreSQL |
 | REQ-7 Filter by status | `ck_ticket_status`, `ix_ticket_status_created_at` |
 | REQ-8 Persistence | PostgreSQL + Flyway (§12) |
 | REQ-9 Backend validation | DB constraints as the final backstop (§10). Limits defined here feed Bean Validation |
@@ -431,3 +434,4 @@ New in this document:
 ## Changelog
 
 - 2026-09-25 — Initial draft.
+- 2026-09-26 — §13.3 upgrade step 1 implemented (V3 trigram indexes) after the NFR-3 measurement.

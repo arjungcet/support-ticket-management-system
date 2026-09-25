@@ -105,7 +105,7 @@ because it is slow and brittle.
 
 ### 4.2 Service tests — application layer
 
-**Tools:** JUnit 5, Mockito (`@Mock` repositories), fixed `Clock`. **Scope:** `TicketService`, `TicketCommentService`.
+**Tools:** JUnit Jupiter (6, per D-5), Mockito (`@Mock` repositories), fixed `Clock`. **Scope:** `TicketService`, `TicketCommentService`. Implemented in `TicketServiceTest` and `TicketCommentServiceTest`.
 
 | ID | Case | Expected |
 |----|------|----------|
@@ -421,7 +421,7 @@ Components are queried by role and label.
 
 ## 13. End-to-end tests
 
-**Tools:** Playwright (Chromium in CI, ⚠ TS-4) against the real stack: Next.js (production build) → Spring Boot →
+**Tools:** Playwright (Chromium, Firefox and WebKit in CI; TS-4 superseded by NFR-5) against the real stack: Next.js (production build) → Spring Boot →
 PostgreSQL via `docker compose`. The database is reset between scenarios through a test-only reset script, not through
 the API. **Kept deliberately small.** Each scenario proves an integration seam that no lower level can.
 
@@ -446,8 +446,12 @@ Not in E2E: validation permutations, the full transition matrix, search edge cas
 | 2. Backend integration (repository, IT, H2 smoke) | `./gradlew integrationTest` | Every push | All pass |
 | 3. Backend coverage | `./gradlew jacocoTestCoverageVerification` (aggregates both suites) | Every push | ≥ 80 % line / ≥ 70 % branch on `ticket.domain` + `ticket.application` |
 | 4. Frontend | `npm run lint && npm run typecheck && npm run test` | Every push | All pass. Coverage ≥ 70 % lines on `features/` and `lib/` (⚠ TS-3) |
-| 5. E2E | `npm run e2e` | Pull requests to `main` + nightly (⚠ TS-4) | All pass |
-| 6. Dependency audit | OWASP Dependency-Check / `npm audit` | Nightly + PR | No unresolved high/critical |
+| 5. E2E, incl. security headers and WCAG 2.2 AA (axe) | `npm run e2e:all-browsers` (Chromium, Firefox, WebKit) | Every push and PR (CI) | All pass |
+| 6. Dependency audit | `npm audit --omit=dev --audit-level=high` (frontend) | Every push and PR (CI) | No high/critical |
+| 7. Secret scan | Gitleaks over the full git history | Every push and PR (CI) | No findings |
+| 8. Performance (NFR-3) | `npm run perf` in `e2e/` (100 000 tickets on PostgreSQL) | On demand, before releases | p95 targets of NFR-3 |
+
+Stages 1–7 run in GitHub Actions (`.github/workflows/ci.yml`) on every push to `main` and every pull request.
 
 `./gradlew build` runs stages 1–3. **Flaky-test policy:** a flaky test is fixed or quarantined with a linked issue
 within one working day. Retries are not used to hide flakiness, except for Playwright's single CI retry, whose trace
@@ -476,10 +480,11 @@ is reviewed.
 
 ## 16. What is deliberately not tested
 
-- **Performance/load:** no NFR targets are defined yet (⚠ A-1). A basic "list with 10k tickets responds in < 500 ms"
-  check may be added once the spec sets a target.
+- **Load / concurrency throughput:** only single-client latency at 100 000 tickets is measured (NFR-3). No
+  multi-user load test.
 - **Authentication/authorisation:** out of scope for v1 (⚠ A-4).
-- **Cross-browser matrix:** Chromium only (⚠ TS-4).
+- **Branded browsers:** E2E runs on Playwright's Chromium, Firefox and WebKit engines, not on branded Edge or Safari builds (NFR-5).
+- **Manual accessibility audit:** axe covers the automatable WCAG 2.2 AA rules only (NFR-4).
 - **Framework behaviour itself** (Spring, Hibernate, Jackson): only our configuration and use of it.
 
 ## 17. Assumptions
@@ -489,10 +494,11 @@ is reviewed.
 | TS-1 | Time budgets in §2 are targets, not hard CI limits | Targets | Implementation plan |
 | TS-2 | Contract validation of responses against `spec/openapi.yaml` in ITs. The validator library must support OpenAPI 3.1, **to be verified** when chosen (A-33) | Validate all IT responses | Implementation plan |
 | TS-3 | Frontend coverage ≥ 70 % lines and `vitest-axe` accessibility checks | As stated | Implementation plan |
-| TS-4 | Playwright runs Chromium only, on PRs to `main` and nightly, not on every push | As stated | Implementation plan |
+| TS-4 | Playwright runs Chromium only, on PRs to `main` and nightly, not on every push | **Superseded 2026-09-26:** all three engines on every push and PR (NFR-5, CI) | — |
 | TS-5 | PIT mutation testing on `ticket.domain` is optional hardening, not a gate | Optional | Implementation plan |
 | TS-6 | CI runners provide Docker for Testcontainers and `docker compose` | Yes | Implementation plan / CI setup |
 
 ## Changelog
 
 - 2026-09-26 — Initial draft.
+- 2026-09-26 — Service tests implemented with Mockito (D-5). CI, three-engine E2E, axe WCAG 2.2 AA checks, secret scan and the NFR-3 performance check added. Input-safety tests for security review M-4 (`InputSafetyApiIT`).

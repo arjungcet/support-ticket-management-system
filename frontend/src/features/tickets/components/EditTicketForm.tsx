@@ -90,7 +90,7 @@ export function EditTicketForm({ ticket }: { ticket: TicketResponse }) {
         <input {...register("title", textRules(FIELD_LIMITS.title, true))} />
       </Field>
       <Field id="edit-description" label="Description" error={errors.description?.message}>
-        <textarea rows={6} {...register("description", textRules(FIELD_LIMITS.description, true))} />
+        <textarea rows={6} {...register("description", textRules(FIELD_LIMITS.description, true, true))} />
       </Field>
       <Field id="edit-priority" label="Priority" error={errors.priority?.message}>
         <select {...register("priority")}>

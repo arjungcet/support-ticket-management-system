@@ -17,6 +17,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.RollbackException;
 import java.time.Clock;
+import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
 import org.hibernate.SessionFactory;
@@ -30,6 +31,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -90,6 +92,31 @@ class DatabaseIT {
                 version))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining(constraint);
+    }
+
+    @Test
+    @DisplayName("search: trigram indexes exist and serve the lower(col) LIKE '%…%' search shape (data-model §13.3)")
+    void searchUsesTrigramIndexes() {
+        List<String> indexes = jdbc.queryForList(
+                "SELECT indexname FROM pg_indexes WHERE tablename = 'ticket' AND indexname LIKE '%trgm'", String.class);
+        assertThat(indexes).containsExactlyInAnyOrder("ix_ticket_title_trgm", "ix_ticket_description_trgm");
+
+        // With sequential scans disabled the planner must be able to answer the search from the indexes alone.
+        String plan = jdbc.execute((ConnectionCallback<String>) connection -> {
+            try (var statement = connection.createStatement()) {
+                statement.execute("SET enable_seqscan = off");
+                var result = statement.executeQuery("""
+                        EXPLAIN SELECT id FROM ticket
+                        WHERE lower(title) LIKE '%printer%' ESCAPE '\\' OR lower(description) LIKE '%printer%' ESCAPE '\\'""");
+                StringBuilder lines = new StringBuilder();
+                while (result.next()) {
+                    lines.append(result.getString(1)).append('\n');
+                }
+                statement.execute("RESET enable_seqscan");
+                return lines.toString();
+            }
+        });
+        assertThat(plan).contains("ix_ticket_title_trgm").contains("ix_ticket_description_trgm");
     }
 
     @Test

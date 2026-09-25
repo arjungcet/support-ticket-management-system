@@ -2,7 +2,7 @@
 
 | Scope | Sources | Last updated |
 |-------|---------|--------------|
-| Every AI-assisted step from the first prompt to the current state | [`docs/prompt-history.md`](prompt-history.md) (38 prompts), [`.specstory/history/`](../.specstory/history/) (full text), `docs/reviews/`, [`docs/ai-review.md`](ai-review.md), Git history | 2026-09-26 |
+| Every AI-assisted step from the first prompt to the current state | [`docs/prompt-history.md`](prompt-history.md) (39 prompts), [`.specstory/history/`](../.specstory/history/) (full text), `docs/reviews/`, [`docs/ai-review.md`](ai-review.md), Git history | 2026-09-26 |
 
 ## About the tools
 
@@ -189,16 +189,35 @@ The missing backend was deliberately **not** treated as a "fix". It's unimplemen
 
 ---
 
+## Additional phase — Remaining decisions, input limits, CI and verified NFRs
+**Tool:** Claude Code
+
+**Prompt:** 10:50: "anything left complete that also".
+
+**Human decisions** (answered in chat, 10:50; all four recommended options):
+- Security M-4: **add a 128 KB request limit (`413 PAYLOAD_TOO_LARGE`) and reject control characters** — a contract change, so the product owner approved it first.
+- D-2: **keep** the absent-vs-`null` semantics and error aggregation as specified and built.
+- D-4: **set and verify** targets: p95 < 500 ms (lists) / 200 ms (details) at 100 000 tickets, WCAG 2.2 AA, latest two Chrome/Edge/Firefox/Safari.
+- D-5: **accept JUnit Jupiter 6 and add Mockito** service tests.
+
+**Result:**
+- M-4, spec first (`api-contract.md`, `openapi.yaml`), then tests that failed first: on PostgreSQL a single `\u0000` produced **500 INTERNAL_ERROR** for create, update and search, and oversized bodies were accepted. Fixed in `JsonBody`, `RequestParams` and a new `RequestSizeLimitFilter`. 15 new integration tests; frontend hints mirror the rule.
+- D-5: `TicketServiceTest` and `TicketCommentServiceTest` (19 tests, mapped to TS-SVC-01…10). A mutation (version check disabled) made 2 of them fail. Mockito runs as a `-javaagent`, so no JVM warnings.
+- D-4: axe-core WCAG 2.2 AA checks on every page type in light and dark mode (0 violations; a planted violation was detected, so the check works). The full E2E suite passes in Chromium, Firefox and WebKit (102/102). `npm run perf` seeds 100 000 tickets: the **first run failed** (a no-match search scanned the table, p95 545 ms). The trigram indexes already planned in `data-model.md` §13.3 fixed it (p95 10 ms); every scenario is now under 50 ms.
+- CI: `.github/workflows/ci.yml` — Gitleaks over the history, backend build with the coverage gate, frontend checks with `npm audit`, E2E in three engines. Actions pinned to commit SHAs; `actionlint` clean. It has **not run on GitHub yet** (it runs on the next push).
+- `openapi.yaml` re-checked against the live backend: 31/31 responses conform, including the new 413 and control-character cases.
+
+**AI mistake caught in this phase:** the first axe sanity check "missed" a planted contrast problem. The cause was the app's own CSP blocking the planted inline style, not axe. Re-planted through JavaScript, it was detected.
+
+---
+
 ## Current state and open human decisions
 
 | Item | Status |
 |------|--------|
 | Acceptance | **Accepted: 15/15** ([re-run](reviews/2026-09-26-acceptance-review-2.md)) |
-| Requirements sign-off (§15 assumptions, Q-1…Q-11) | **Done** 2026-09-26 |
-| Deployment boundary / no-auth decision (security H-2, D-1) | **Decided**: [ADR-0002](adr/0002-no-authentication-internal-deployment.md) |
-| `openapi.yaml` (D-3) | **Done** |
-| Frontend security headers (security M-2) | **Done** |
-| D-2 `null` vs missing semantics, D-4 measurable NFRs | Open |
-| D-5 JUnit Jupiter 6 instead of the JUnit 5 in TC-5 | Open |
-| Request-size limits (security M-4), CI pipeline | Open |
-| Engineer sign-off of the AI-output audit (`ai-review.md` §12) | Open |
+| Requirements sign-off, decisions D-1…D-6 | **All done** 2026-09-26 |
+| Security review H-2 (deployment boundary), M-2 (headers), M-4 (input limits) | **Done** |
+| NFR-3 performance, NFR-4 WCAG 2.2 AA, NFR-5 browsers | **Verified** (automated checks; see limits in `spec/requirements.md` §2.2) |
+| CI pipeline | **Added**; first GitHub run happens on the next push |
+| Engineer sign-off of the AI-output audit (`ai-review.md` §12) | Open — the engineer's own review |

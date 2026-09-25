@@ -20,5 +20,15 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // D-4 supported browsers: Chrome/Edge (Chromium), Firefox, Safari (WebKit). Chromium runs by default;
+  // E2E_BROWSERS=all (npm run e2e:all-browsers) adds the other two engines.
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    ...(process.env.E2E_BROWSERS === "all"
+      ? [
+          { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+          { name: "webkit", use: { ...devices["Desktop Safari"] } },
+        ]
+      : []),
+  ],
 });

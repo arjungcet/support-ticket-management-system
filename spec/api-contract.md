@@ -2,7 +2,7 @@
 
 | Status | Last updated | Related |
 |--------|--------------|---------|
-| Draft — awaiting review | 2026-09-25 | [`requirements.md`](requirements.md), [`architecture.md`](architecture.md) §8, §10, §14, [`data-model.md`](data-model.md), [`rules/api-standards.md`](../rules/api-standards.md), [ADR-0001](../docs/adr/0001-use-postgresql.md) |
+| Approved: semantics confirmed by the product owner (D-2, 2026-09-26) | 2026-09-26 | [`requirements.md`](requirements.md), [`architecture.md`](architecture.md) §8, §10, §14, [`data-model.md`](data-model.md), [`rules/api-standards.md`](../rules/api-standards.md), [ADR-0001](../docs/adr/0001-use-postgresql.md) |
 
 This is the **normative API contract**. Backend controllers, frontend client types, MSW mocks and API tests are all
 derived from it. Its machine-readable OpenAPI 3.1 form is [`openapi.yaml`](openapi.yaml) (decision D-3). Keep the two
@@ -28,7 +28,8 @@ in sync. If they ever disagree, this document wins until both are corrected.
 | Timestamps | ISO-8601 UTC with `Z`, microsecond precision at most, e.g. `2026-09-25T22:30:00.123456Z` |
 | IDs | JSON integers (int64), ≥ 1 |
 | Nullable fields | Always **present** in responses with value `null`. Never omitted, so clients and tests can rely on the shape |
-| Text input | All string inputs are **trimmed** before validation and storage. Length limits apply to the trimmed value (⚠ A-30) |
+| Text input | All string inputs are **trimmed** before validation and storage. Length limits apply to the trimmed value (⚠ A-30). Control characters (U+0000–U+001F) are rejected with `INVALID_VALUE`, except tab, line feed and carriage return in the multi-line fields `description` and comment `body` (security review M-4) |
+| Request size | Request bodies are limited to **128 KB** (131 072 bytes). Larger bodies: `413 PAYLOAD_TOO_LARGE`, and the rest of the body is not read. The largest valid request (every field at its maximum, every character JSON-escaped as a surrogate pair) is about 64 KB, so no valid request is rejected (security review M-4) |
 | Unknown request properties | Rejected: `400 VALIDATION_FAILED` with field code `UNKNOWN_FIELD` |
 | Unknown query parameters | Ignored |
 | Correlation | Clients may send `X-Correlation-Id` (≤ 64 chars `[A-Za-z0-9-]`). The server generates one otherwise, and **always** returns it in the `X-Correlation-Id` response header and in error bodies |
@@ -54,11 +55,12 @@ When a request has several problems, the server reports **only the first** in th
 and tests rely on it:
 
 1. `415 UNSUPPORTED_MEDIA_TYPE`: wrong `Content-Type` on a request with a body
-2. `400 MALFORMED_REQUEST`: body is not parseable JSON, or a property has the wrong JSON type
-3. `400 VALIDATION_FAILED`: path, query or body validation. **All** field errors are reported together in `errors[]`
-4. `404 TICKET_NOT_FOUND`
-5. `409 TICKET_CONCURRENT_MODIFICATION`: `version` mismatch
-6. Business rules: `409 TICKET_INVALID_TRANSITION`, `422 TICKET_NOT_EDITABLE`, `422 TICKET_NOT_COMMENTABLE`
+2. `413 PAYLOAD_TOO_LARGE`: body larger than 128 KB
+3. `400 MALFORMED_REQUEST`: body is not parseable JSON, or a property has the wrong JSON type
+4. `400 VALIDATION_FAILED`: path, query or body validation. **All** field errors are reported together in `errors[]`
+5. `404 TICKET_NOT_FOUND`
+6. `409 TICKET_CONCURRENT_MODIFICATION`: `version` mismatch
+7. Business rules: `409 TICKET_INVALID_TRANSITION`, `422 TICKET_NOT_EDITABLE`, `422 TICKET_NOT_COMMENTABLE`
 
 ---
 
@@ -114,6 +116,7 @@ keeps assertions stable.
 | 405 | `METHOD_NOT_ALLOWED` | Method not allowed | Route exists, method doesn't. The `Allow` header lists the valid methods | — |
 | 409 | `TICKET_CONCURRENT_MODIFICATION` | Ticket was modified | `version` mismatch (§1.2) | `ticketId`, `currentVersion` |
 | 409 | `TICKET_INVALID_TRANSITION` | Invalid status transition | Target status not reachable from the current status (§6.9) | `ticketId`, `currentStatus`, `targetStatus`, `allowedTransitions` |
+| 413 | `PAYLOAD_TOO_LARGE` | Payload too large | Request body larger than 128 KB (§1.1) | — |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | Unsupported media type | Body sent with a `Content-Type` other than `application/json` | — |
 | 422 | `TICKET_NOT_EDITABLE` | Ticket cannot be edited | Update or assign on a `CLOSED`/`CANCELLED` ticket (⚠ A-17) | `ticketId`, `currentStatus` |
 | 422 | `TICKET_NOT_COMMENTABLE` | Ticket cannot be commented on | Comment on a `CLOSED`/`CANCELLED` ticket (⚠ A-18) | `ticketId`, `currentStatus` |
@@ -131,7 +134,7 @@ keeps assertions stable.
 | `REQUIRED` | Missing or `null` where a value is required | `title` absent. `version` absent |
 | `BLANK` | Empty or whitespace-only string | `"title": "   "` |
 | `TOO_LONG` | Longer than the maximum after trimming | `title` > 200 chars |
-| `INVALID_VALUE` | Not an allowed value: unknown enum, out-of-range number, bad format | `"priority": "CRITICAL"`, `size=0`, `ticketId=abc` |
+| `INVALID_VALUE` | Not an allowed value: unknown enum, out-of-range number, bad format, control character in text | `"priority": "CRITICAL"`, `size=0`, `ticketId=abc`, `"title": "a\u0000b"`, `q=%00` |
 | `UNKNOWN_FIELD` | Property not defined for this request | `"status"` in a create request |
 | `NO_CHANGES_REQUESTED` | Object-level (`field: null`): request contains nothing to update | `PATCH` body with only `version` |
 
@@ -602,7 +605,7 @@ Nothing is changed on rejection: `status`, `version` and timestamps stay the sam
 | `POST /tickets/{id}/comments` | | ✅ | ✅ | ✅ | ✅ | | | ✅ | | ✅ |
 | `POST /tickets/{id}/status-transitions` | ✅ | | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | | |
 
-Every endpoint can also return `500 INTERNAL_ERROR`. Wrong methods return `405`, and unknown paths return `404 RESOURCE_NOT_FOUND`.
+Every endpoint can also return `500 INTERNAL_ERROR`. Every endpoint that accepts a body can return `413 PAYLOAD_TOO_LARGE`. Wrong methods return `405`, and unknown paths return `404 RESOURCE_NOT_FOUND`.
 
 ---
 
@@ -666,3 +669,4 @@ New:
 
 - 2026-09-25 — Initial draft.
 - 2026-09-26 — `openapi.yaml` added (D-3). No contract change.
+- 2026-09-26 — Security review M-4 (approved by the product owner): control characters rejected with `INVALID_VALUE`; 128 KB body limit with the new code `413 PAYLOAD_TOO_LARGE`, placed second in the error precedence (§1.3). D-2 decided: the absent-vs-`null` semantics and error aggregation stay as specified.

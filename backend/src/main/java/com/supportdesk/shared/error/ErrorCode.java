@@ -11,6 +11,7 @@ public enum ErrorCode {
     METHOD_NOT_ALLOWED(405, "Method not allowed"),
     TICKET_CONCURRENT_MODIFICATION(409, "Ticket was modified"),
     TICKET_INVALID_TRANSITION(409, "Invalid status transition"),
+    PAYLOAD_TOO_LARGE(413, "Payload too large"),
     UNSUPPORTED_MEDIA_TYPE(415, "Unsupported media type"),
     TICKET_NOT_EDITABLE(422, "Ticket cannot be edited"),
     TICKET_NOT_COMMENTABLE(422, "Ticket cannot be commented on"),

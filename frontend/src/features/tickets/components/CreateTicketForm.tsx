@@ -51,7 +51,7 @@ export function CreateTicketForm({ onCreated }: { onCreated: (ticket: TicketResp
         <input {...register("title", textRules(FIELD_LIMITS.title, true))} />
       </Field>
       <Field id="description" label="Description" error={errors.description?.message}>
-        <textarea rows={6} {...register("description", textRules(FIELD_LIMITS.description, true))} />
+        <textarea rows={6} {...register("description", textRules(FIELD_LIMITS.description, true, true))} />
       </Field>
       <Field id="priority" label="Priority" error={errors.priority?.message}>
         <select {...register("priority")}>

@@ -75,7 +75,7 @@ class PersistenceRestartIT {
             // TS-PERS-02: migrations ran once
             Integer migrations = second.getBean(JdbcTemplate.class)
                     .queryForObject("SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class);
-            assertThat(migrations).isEqualTo(2);
+            assertThat(migrations).as("V1, V2 (common) and V3 (PostgreSQL search indexes), each once").isEqualTo(3);
             // TS-PERS-03: identity continues
             TicketView next = tickets.create(new CreateTicket("After", "restart", TicketPriority.LOW, null));
             assertThat(next.id()).isGreaterThan(before.id());

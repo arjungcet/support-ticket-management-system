@@ -2,7 +2,7 @@
 
 | Status | Last updated | Related |
 |--------|--------------|---------|
-| Explicit requirements: **approved** (as given by the product owner). Assumptions and open questions: **signed off 2026-09-26** (§15, §16). Decisions D-2, D-4, D-5 still open (§17) | 2026-09-26 | [`architecture.md`](architecture.md), [`api-contract.md`](api-contract.md), [`state-machine.md`](state-machine.md), [`data-model.md`](data-model.md), [`test-strategy.md`](test-strategy.md), [spec review](../docs/reviews/2026-09-26-spec-review.md), [`docs/prompt-history.md`](../docs/prompt-history.md) |
+| Explicit requirements: **approved** (as given by the product owner). Assumptions and open questions: **signed off 2026-09-26** (§15, §16). All decisions D-1…D-6 made (§17) | 2026-09-26 | [`architecture.md`](architecture.md), [`api-contract.md`](api-contract.md), [`state-machine.md`](state-machine.md), [`data-model.md`](data-model.md), [`test-strategy.md`](test-strategy.md), [spec review](../docs/reviews/2026-09-26-spec-review.md), [`docs/prompt-history.md`](../docs/prompt-history.md) |
 
 This is the requirements analysis (SDD milestone 02, guide Prompt 1). It separates what the product owner **stated**
 from what the team **assumed**, what is **unknown**, and what must be **decided**. Nothing here is silently invented.
@@ -71,18 +71,26 @@ from what the team **assumed**, what is **unknown**, and what must be **decided*
 | TC-2 | PostgreSQL in production. H2 for tests/local lightweight execution where appropriate. | Prompt 0 |
 | TC-3 | React / Next.js frontend. | Prompt 0 |
 | TC-4 | Maven or Gradle. **Decided: Gradle, Kotlin DSL** (engineer, 2026-09-25). | Prompt 0 |
-| TC-5 | JUnit 5, Spring Boot Test, Mockito and Testcontainers where appropriate. | Prompt 0 |
+| TC-5 | JUnit 5, Spring Boot Test, Mockito and Testcontainers where appropriate. D-5: JUnit Jupiter 6 accepted (same Jupiter API, required by Spring Boot 4); Mockito used for the application-service unit tests | Prompt 0 |
 | NFR-1 | Data survives an application restart (durability). | AC prompt (AC-11) |
 | NFR-2 | No secrets are committed to the repository. | AC prompt (AC-15), Prompt 0 ("security and secret handling") |
 
-### 2.2 Not stated: assumptions and decisions
+### 2.2 Measurable targets (decided D-4, 2026-09-26)
+
+| ID | Target | How it is verified | Result (2026-09-26) |
+|----|--------|--------------------|---------------------|
+| NFR-3 | With 100 000 tickets on PostgreSQL: list, search and filter **p95 < 500 ms**; ticket details and comments **p95 < 200 ms** (server response time, single client) | `e2e/perf/api-latency.spec.ts` (`npm run perf`): seeds 100 000 tickets, 200 timed requests per scenario after warm-up | PASS. Slowest p95: 47 ms (last list page). The first run failed (no-match search 545 ms, a full scan) and led to the trigram indexes of `data-model.md` §13.3 |
+| NFR-4 | **WCAG 2.2 level AA** | axe-core rules for WCAG 2.0/2.1/2.2 A and AA on every page type, light and dark mode (`e2e/tests/accessibility.spec.ts`), plus role-based E2E journeys | PASS: 0 violations. Automated rules cover only part of WCAG; no manual screen-reader audit was done |
+| NFR-5 | Supported browsers: the **latest two versions of Chrome, Edge, Firefox and Safari** on desktop | Full E2E suite in Playwright's Chromium (Chrome, Edge), Firefox and WebKit (Safari) engines (`npm run e2e:all-browsers`, and in CI) | PASS: 102/102. Only the current engine versions were run, not branded Edge/Safari builds |
+
+### 2.3 Not stated: assumptions and decisions
 
 | ID | Topic | Status | Current default |
 |----|-------|--------|-----------------|
-| A-1 | Scale and performance | A, provisional | Internal tool, ≤ 100 k tickets, tens of concurrent users. **No latency target exists** (see D-4) |
+| A-1 | Scale and performance | A, confirmed | Internal tool, ≤ 100 k tickets, tens of concurrent users. Targets: NFR-3 |
 | NFR-Q1 | Availability / uptime | Q | Not specified |
-| NFR-Q2 | Accessibility level | Q | UI follows accessible patterns (labels, `aria-describedby`), but no WCAG level is required yet (see D-4) |
-| NFR-Q3 | Supported browsers | Q | Evergreen desktop browsers assumed. E2E runs on Chromium only (TS-4) |
+| NFR-Q2 | Accessibility level | Answered | WCAG 2.2 AA (NFR-4) |
+| NFR-Q3 | Supported browsers | Answered | NFR-5 |
 | NFR-Q4 | Localisation / time zones | Q | English UI. Timestamps shown in the browser's local time zone (not specified) |
 | NFR-Q5 | Data retention / deletion | Q | Tickets and comments are never deleted (DM-1, DM-2, API-7) |
 
@@ -143,7 +151,8 @@ requirements give no field limits.
 | VR-7 | Search keyword | ≤ 100 characters after trimming. Empty means no filter | A (DM-7), implemented |
 | VR-8 | Status filter | Each value one of the five statuses. Several allowed | A (DM-8), implemented |
 | VR-9 | All text | Leading and trailing whitespace is trimmed before validation and storage | A-30, implemented |
-| VR-10 | Unknown fields, wrong JSON types | Rejected with a field-level or malformed-request error | A (api-contract §1.1), implemented. D-2 |
+| VR-10 | Unknown fields, wrong JSON types | Rejected with a field-level or malformed-request error | A (api-contract §1.1), implemented. D-2 decided: kept |
+| VR-11 | Control characters and oversized bodies | Control characters (U+0000–U+001F) rejected with `INVALID_VALUE`, except tab/line breaks in description and comment body. Bodies over 128 KB: `413 PAYLOAD_TOO_LARGE` | Security review M-4, approved 2026-09-26, implemented |
 
 ## 7. Error scenarios
 
@@ -208,7 +217,7 @@ persistence behaviour are specified in [`state-machine.md`](state-machine.md). R
 
 | ID | Requirement | Status |
 |----|-------------|--------|
-| TR-1 | JUnit 5, Spring Boot Test, Mockito and Testcontainers where appropriate (TC-5) | E. D-5: JUnit Jupiter 6 is in use |
+| TR-1 | JUnit 5, Spring Boot Test, Mockito and Testcontainers where appropriate (TC-5) | E. D-5 decided: Jupiter 6 accepted; Mockito unit tests for `TicketService` and `TicketCommentService` |
 | TR-2 | Explicit tests for each allowed transition (`OPEN→IN_PROGRESS`, `IN_PROGRESS→RESOLVED`, `RESOLVED→CLOSED`, `OPEN→CANCELLED`, `IN_PROGRESS→CANCELLED`) | E (test-strategy prompt) |
 | TR-3 | Explicit rejection tests including `CLOSED→OPEN`, `RESOLVED→OPEN`, `CANCELLED→OPEN` | E (test-strategy prompt) |
 | TR-4 | State-machine integration tests pass | E (AC-14) |
@@ -224,7 +233,7 @@ persistence behaviour are specified in [`state-machine.md`](state-machine.md). R
 | SEC-2 | Validate all input at the backend (REQ-9). Bound SQL parameters only. User text rendered as text (no HTML injection) | E (REQ-9) + A (design), implemented |
 | SEC-3 | Error responses never expose internals (stack traces, SQL, class names) | A (design), implemented |
 | SEC-4 | **Authentication and authorisation:** none in v1. Anyone who can reach the system can do everything, and comment authors are unverified | A-4, implemented. D-1 decided: [ADR-0002](../docs/adr/0002-no-authentication-internal-deployment.md) |
-| SEC-5 | Deployment boundary: local or trusted internal network only (ADR-0002). Frontend security headers with a nonce-based CSP: implemented (security review M-2). Request-size limits: open (M-4) | D-1 decided. M-4 open |
+| SEC-5 | Deployment boundary: local or trusted internal network only (ADR-0002). Frontend security headers with a nonce-based CSP: implemented (security review M-2). Request-size limit and control-character rejection: implemented (M-4, VR-11) | D-1 decided. M-4 done |
 | SEC-6 | Dependency vulnerability scanning | A (`rules/security.md` §5). Not yet automated (security review M-1) |
 
 ## 14. Observability and logging
@@ -292,10 +301,10 @@ All answered with the implemented behaviour, so no spec, code or test changes we
 | ID | Decision | Before | Reference |
 |----|----------|--------|-----------|
 | D-1 | Authentication / deployment boundary (internal network, SSO proxy, or v1 authentication) | Any deployment | Security review H-2. **Decided 2026-09-26:** no login in v1; local or trusted internal network only ([ADR-0002](../docs/adr/0002-no-authentication-internal-deployment.md)) |
-| D-2 | API contract semantics for `null` vs missing fields and error aggregation (keep the current implementation or simplify) | Further API changes | Spec review SR-02/SR-03, plan STEP-02 |
+| D-2 | API contract semantics for `null` vs missing fields and error aggregation (keep the current implementation or simplify) | Further API changes | Spec review SR-02/SR-03, plan STEP-02. **Decided 2026-09-26:** keep as specified and built (`api-contract.md` approved) |
 | D-3 | Make `openapi.yaml` the single machine-readable contract | Frontend type generation, contract tests | Spec review SR-04, plan STEP-05. **Decided 2026-09-26:** [`openapi.yaml`](openapi.yaml) added; live backend responses for all 8 operations and every error class validated against it (28 of 28) |
-| D-4 | Measurable NFRs: latency target at a given data size, WCAG level, supported browsers | Performance and accessibility testing | Spec review SR-17 |
-| D-5 | Accept JUnit Jupiter 6 (Spring Boot BOM) instead of "JUnit 5" (TC-5), and whether Mockito-based service tests are wanted | Final sign-off | Acceptance review (re-run) C-6 |
+| D-4 | Measurable NFRs: latency target at a given data size, WCAG level, supported browsers | Performance and accessibility testing | Spec review SR-17. **Decided 2026-09-26:** NFR-3, NFR-4, NFR-5 (§2.2), all verified |
+| D-5 | Accept JUnit Jupiter 6 (Spring Boot BOM) instead of "JUnit 5" (TC-5), and whether Mockito-based service tests are wanted | Final sign-off | Acceptance review (re-run) C-6. **Decided 2026-09-26:** Jupiter 6 accepted; Mockito service tests added |
 | D-6 | Sign-off of every assumption in §15 (confirm or change) | Final sign-off | Spec review SR-01. **Decided 2026-09-26:** all confirmed as built |
 
 ## Changelog
@@ -307,3 +316,6 @@ All answered with the implemented behaviour, so no spec, code or test changes we
 - 2026-09-26: Product-owner sign-off. §15 assumptions confirmed as built. Q-1…Q-11 answered with the implemented
   behaviour (Q-2: no reopening, REQ-11 unchanged). D-1 decided (ADR-0002), D-3 decided (`openapi.yaml`), D-6 decided.
   D-2, D-4 and D-5 remain open. No behaviour changed.
+- 2026-09-26: D-2 (keep contract semantics), D-4 (NFR-3…5, all verified) and D-5 (Jupiter 6 + Mockito) decided.
+  Security review M-4 approved and implemented as VR-11 (new API behaviour: `413 PAYLOAD_TOO_LARGE`, control
+  characters rejected). PostgreSQL trigram search indexes added after the NFR-3 measurement failed without them.

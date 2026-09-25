@@ -1,5 +1,7 @@
 # Support Ticket Management System (SDD)
 
+[![CI](https://github.com/arjungcet/support-ticket-management-system/actions/workflows/ci.yml/badge.svg)](https://github.com/arjungcet/support-ticket-management-system/actions/workflows/ci.yml)
+
 A support ticket system built with **Specification-Driven Development**: requirements → specification → architecture
 → data model → API contract → state machine → test strategy → implementation plan → code → tests → review → fix.
 Every phase leaves a reviewed artifact under `spec/` or `docs/` before code is written. The workflow and its rules
@@ -12,11 +14,11 @@ TypeScript · JUnit (Jupiter) · Vitest + Testing Library + MSW · Playwright.
 
 | Area | State |
 |------|-------|
-| Specifications | Reviewed. [Requirements](spec/requirements.md) signed off by the product owner (assumptions confirmed as built, Q-1…Q-11 answered). Machine-readable contract: [`spec/openapi.yaml`](spec/openapi.yaml). Still open: decisions D-2, D-4, D-5 |
+| Specifications | Reviewed. [Requirements](spec/requirements.md) signed off by the product owner (assumptions confirmed as built, Q-1…Q-11 answered). Machine-readable contract: [`spec/openapi.yaml`](spec/openapi.yaml). All decisions D-1…D-6 made, including measurable targets: API p95 < 500 ms at 100 000 tickets, WCAG 2.2 AA, latest Chrome/Edge/Firefox/Safari |
 | Backend | Ticket API implemented: domain + state machine, PostgreSQL persistence (JPA + Flyway), REST API, validation, Problem Details errors |
 | Frontend | Implemented against the API contract: create, list, details, edit, assignee, comments, search, filter, status transitions, error handling. Status/priority badges, dark mode, nonce-based Content-Security-Policy and security headers |
-| Tests | Backend: 80 unit (incl. ArchUnit) + 267 integration tests on PostgreSQL (Testcontainers), coverage gate ≥ 80 % line / 70 % branch. Frontend: 95. E2E: 24/24 against the real backend on PostgreSQL (incl. security headers) |
-| Acceptance | **Accepted: 15/15 criteria PASS** ([re-run](docs/reviews/2026-09-26-acceptance-review-2.md)), Since then: deployment boundary decided ([ADR-0002](docs/adr/0002-no-authentication-internal-deployment.md): no login, local/internal networks only) and security headers added. Still open: CI, decisions D-2/D-4/D-5. Earlier run: [acceptance review](docs/reviews/2026-09-26-acceptance-review.md) |
+| Tests | Backend: 99 unit (incl. ArchUnit and Mockito service tests) + 283 integration tests on PostgreSQL (Testcontainers), coverage gate ≥ 80 % line / 70 % branch. Frontend: 99. E2E: 34 journeys and checks (incl. security headers and WCAG 2.2 AA) in Chromium, Firefox and WebKit, 102/102. Performance at 100 000 tickets: slowest p95 47 ms |
+| Acceptance | **Accepted: 15/15 criteria PASS** ([re-run](docs/reviews/2026-09-26-acceptance-review-2.md)), Since then: deployment boundary decided ([ADR-0002](docs/adr/0002-no-authentication-internal-deployment.md): no login, local/internal networks only) and security headers added; request-size and control-character limits (security M-4); CI on every push. Earlier run: [acceptance review](docs/reviews/2026-09-26-acceptance-review.md) |
 
 ## Repository layout
 
@@ -94,11 +96,17 @@ cd frontend && npm run build && BACKEND_URL=http://backend.example:8080 npm star
 cd backend && ./gradlew build                 # unit + ArchUnit + integration tests on PostgreSQL (Docker), coverage gate
 cd frontend && npm test && npm run lint && npm run typecheck
 cd backend && ./gradlew bootJar && cd ../frontend && npm run build   # E2E needs both builds
-cd e2e && npm ci && npx playwright install chromium
-cd e2e && npm run e2e                          # real backend on a throwaway PostgreSQL container (Docker)
+cd e2e && npm ci && npx playwright install chromium firefox webkit
+cd e2e && npm run e2e                          # real backend on a throwaway PostgreSQL container (Docker), Chromium
+cd e2e && npm run e2e:all-browsers             # the same in Chromium, Firefox and WebKit (what CI runs)
+cd e2e && npm run perf                         # NFR-3: API latency with 100 000 tickets on PostgreSQL (~2 min)
 cd e2e && E2E_DB=h2 npm run e2e               # real backend on in-memory H2 (J13 persistence then fails by design)
 cd e2e && npm run e2e:stub                     # against the contract stub (validates the tests themselves)
 ```
+
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push to `main` and every pull request:
+secret scan (Gitleaks, full history), backend build with all tests and the coverage gate, frontend checks with
+`npm audit`, and the E2E suite in three browser engines.
 
 ## Documentation
 

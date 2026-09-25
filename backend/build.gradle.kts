@@ -74,6 +74,17 @@ testing {
 
 val integrationTest = tasks.named<Test>("integrationTest")
 
+// Mockito's inline mock maker as a -javaagent instead of self-attaching at runtime, which recent JDKs warn about and
+// will block by default (JEP 451). Version from the Spring Boot BOM.
+val mockitoAgent: Configuration = configurations.create("mockitoAgent")
+dependencies {
+    mockitoAgent("org.mockito:mockito-core") { isTransitive = false }
+}
+tasks.test {
+    // -Xshare:off silences the JVM's class-data-sharing notice that any boot-classpath agent triggers.
+    jvmArgumentProviders.add(CommandLineArgumentProvider { listOf("-javaagent:${mockitoAgent.singleFile}", "-Xshare:off") })
+}
+
 // Like the built-in test suite, integration tests see the application's own dependencies (e.g. Spring Web types).
 configurations.named("integrationTestImplementation") { extendsFrom(configurations.implementation.get()) }
 configurations.named("integrationTestRuntimeOnly") { extendsFrom(configurations.runtimeOnly.get()) }

@@ -17,7 +17,8 @@ import tools.jackson.databind.node.ObjectNode;
  * Reads a request body with the exact semantics of spec/api-contract.md §1–§2, which plain DTO binding can't express
  * (review SR-02/SR-03): absent vs explicit {@code null}, strict JSON types (no coercion; wrong type →
  * {@code MALFORMED_REQUEST}), unknown properties reported as {@code UNKNOWN_FIELD}, and all field errors collected
- * together. Text is trimmed before validation; lengths count characters after trimming.
+ * together. Text is trimmed before validation; lengths count characters after trimming. Control characters are
+ * rejected (security review M-4): PostgreSQL can't store NUL, and single-line fields shouldn't hold line breaks.
  */
 final class JsonBody {
 
@@ -89,8 +90,18 @@ final class JsonBody {
         return value.longValue();
     }
 
-    /** A text property, trimmed. Returns {@code null} when absent, cleared, or invalid (see {@link Presence}). */
+    /** A single-line text property, trimmed. Returns {@code null} when absent, cleared, or invalid. */
     String text(String field, int maxLength, Presence presence) {
+        return text(field, maxLength, presence, false);
+    }
+
+    /** Like {@link #text} but tab, line feed and carriage return are allowed (description, comment body). */
+    String multiLineText(String field, int maxLength, Presence presence) {
+        return text(field, maxLength, presence, true);
+    }
+
+    /** A text property, trimmed. Returns {@code null} when absent, cleared, or invalid (see {@link Presence}). */
+    private String text(String field, int maxLength, Presence presence, boolean multiLine) {
         JsonNode value = node.get(field);
         if (value == null || value.isNull()) {
             boolean missing = value == null
@@ -109,6 +120,11 @@ final class JsonBody {
             if (presence == Presence.REQUIRED || presence == Presence.OPTIONAL) {
                 validation.add(FieldError.BODY, field, "BLANK", label(field) + " must not be blank.");
             }
+            return null;
+        }
+        if (containsControlCharacter(trimmed, multiLine)) {
+            validation.add(FieldError.BODY, field, "INVALID_VALUE",
+                    label(field) + " must not contain control characters.");
             return null;
         }
         if (FieldLimits.length(trimmed) > maxLength) {
@@ -143,6 +159,17 @@ final class JsonBody {
         validation.add(FieldError.BODY, field, "INVALID_VALUE",
                 label(field) + " must be one of " + allowedNames(type) + ".");
         return null;
+    }
+
+    /** U+0000–U+001F; with {@code multiLine}, tab, line feed and carriage return are allowed (api-contract §1.1). */
+    static boolean containsControlCharacter(String value, boolean multiLine) {
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c < 0x20 && !(multiLine && (c == '\t' || c == '\n' || c == '\r'))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static <E extends Enum<E>> String allowedNames(Class<E> type) {
