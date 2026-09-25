@@ -1,9 +1,9 @@
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
-import { fieldError, problem } from "@/test/fixtures";
-import { server } from "@/test/server";
-import { apiRequest } from "./client";
-import { ApiError } from "./errors";
+import { fieldError, problem } from "@tests/support/fixtures";
+import { server } from "@tests/support/server";
+import { apiRequest } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/errors";
 
 async function caught(promise: Promise<unknown>): Promise<ApiError> {
   try {

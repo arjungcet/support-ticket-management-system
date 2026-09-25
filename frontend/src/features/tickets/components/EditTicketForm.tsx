@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Field } from "@/components/ui/Field";
@@ -14,6 +14,7 @@ import {
   type UpdateTicketRequest,
 } from "@/lib/api/types";
 import { useReloadTicket, useUpdateTicket } from "../hooks/queries";
+import { useActionFailure } from "../hooks/useActionFailure";
 import { PRIORITY_LABELS } from "../labels";
 import { textRules } from "./validation";
 
@@ -30,8 +31,9 @@ function valuesOf(ticket: TicketResponse): EditValues {
 }
 
 /**
- * REQ-4 (title, description, priority): PATCH with only the changed fields plus the ticket's current `version`.
- * On a version conflict the user's input is kept so they can reload and save again.
+ * REQ-4 (title, description, priority): PATCH with only the fields the user edited plus the ticket's current
+ * `version`. On a version conflict the user's input is kept so they can reload and save again; fields the user did
+ * not touch follow the reloaded ticket, so saving never sends back stale values (no lost update).
  */
 export function EditTicketForm({ ticket }: { ticket: TicketResponse }) {
   const {
@@ -39,18 +41,32 @@ export function EditTicketForm({ ticket }: { ticket: TicketResponse }) {
     handleSubmit,
     setError,
     reset,
-    formState: { errors, isDirty, isSubmitting },
+    formState: { errors, isDirty, dirtyFields, isSubmitting },
   } = useForm<EditValues>({ defaultValues: valuesOf(ticket) });
+
+  // When the ticket changes underneath the form (reload, refetch), untouched fields take the new values and the
+  // user's edits are kept.
+  useEffect(() => {
+    reset(valuesOf(ticket), { keepDirtyValues: true });
+  }, [ticket, reset]);
   const updateTicket = useUpdateTicket(ticket.id);
   const reloadTicket = useReloadTicket(ticket.id);
-  const [failure, setFailure] = useState<{ error: unknown; details: string[] } | null>(null);
+  const [failure, setFailure] = useActionFailure<{ error: unknown; details: string[] }>(
+    ticket.version,
+    (current) => current.error,
+  );
 
   const onSubmit = handleSubmit(async (values) => {
     setFailure(null);
     const body: UpdateTicketRequest = { version: ticket.version };
-    if (values.title !== ticket.title) body.title = values.title;
-    if (values.description !== ticket.description) body.description = values.description;
-    if (values.priority !== ticket.priority) body.priority = values.priority;
+    if (dirtyFields.title && values.title !== ticket.title) body.title = values.title;
+    if (dirtyFields.description && values.description !== ticket.description) body.description = values.description;
+    if (dirtyFields.priority && values.priority !== ticket.priority) body.priority = values.priority;
+    if (Object.keys(body).length === 1) {
+      // The user's edits already match the current ticket: nothing to send.
+      reset(valuesOf(ticket));
+      return;
+    }
     try {
       const saved = await updateTicket.mutateAsync(body);
       reset(valuesOf(saved));

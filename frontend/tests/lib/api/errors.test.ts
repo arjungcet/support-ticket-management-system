@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ApiError, ERROR_MESSAGES, fieldMessage, userMessage } from "./errors";
-import type { Problem } from "./types";
+import { ApiError, ERROR_MESSAGES, fieldMessage, userMessage } from "@/lib/api/errors";
+import type { Problem } from "@/lib/api/types";
 
 /** Every error code in spec/api-contract.md §2.1. */
 const CONTRACT_CODES = [

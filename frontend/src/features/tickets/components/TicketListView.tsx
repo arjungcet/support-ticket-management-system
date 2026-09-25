@@ -27,12 +27,29 @@ interface TicketListViewProps {
 export function TicketListView({ params, onParamsChange, searchDebounceMs = 300 }: TicketListViewProps) {
   const { data, error, isPending, isFetching, refetch } = useTickets(params);
   const [keyword, setKeyword] = useState(params.q);
+  const [previousQ, setPreviousQ] = useState(params.q);
+  // Keywords this component pushed recently. URL updates are asynchronous and may arrive after newer pushes.
+  const [pushedKeywords, setPushedKeywords] = useState<string[]>([]);
+
+  // When the URL's keyword changes to something this component did not push (Back button, nav link), show it
+  // instead of re-applying the old keyword. Updates caused by our own debounced pushes keep what the user is typing.
+  if (params.q !== previousQ) {
+    setPreviousQ(params.q);
+    if (!pushedKeywords.includes(params.q.trim())) {
+      setKeyword(params.q);
+      setPushedKeywords([]);
+    }
+  }
 
   useEffect(() => {
-    if (keyword.trim() === params.q.trim()) {
+    const trimmed = keyword.trim();
+    if (trimmed === params.q.trim()) {
       return;
     }
-    const timer = setTimeout(() => onParamsChange({ ...params, q: keyword, page: 0 }), searchDebounceMs);
+    const timer = setTimeout(() => {
+      setPushedKeywords((pushed) => [...pushed.slice(-9), trimmed]);
+      onParamsChange({ ...params, q: keyword, page: 0 });
+    }, searchDebounceMs);
     return () => clearTimeout(timer);
   }, [keyword, params, onParamsChange, searchDebounceMs]);
 

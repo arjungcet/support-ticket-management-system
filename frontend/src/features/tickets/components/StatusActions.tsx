@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { isApiError } from "@/lib/api/errors";
 import type { TicketResponse, TicketStatus } from "@/lib/api/types";
 import { useChangeStatus, useReloadTicket } from "../hooks/queries";
+import { useActionFailure } from "../hooks/useActionFailure";
 import { TRANSITION_LABELS } from "../labels";
 
 /**
@@ -14,7 +14,7 @@ import { TRANSITION_LABELS } from "../labels";
 export function StatusActions({ ticket }: { ticket: TicketResponse }) {
   const changeStatus = useChangeStatus(ticket.id);
   const reloadTicket = useReloadTicket(ticket.id);
-  const [failure, setFailure] = useState<unknown>(null);
+  const [failure, setFailure] = useActionFailure<unknown>(ticket.version, (error) => error);
 
   const move = async (targetStatus: TicketStatus) => {
     setFailure(null);

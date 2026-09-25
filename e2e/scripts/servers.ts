@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 /**
  * Starts, stops and restarts the system under test as real processes:
- *   browser → Next.js (production build, port 13000) → /api proxy → backend (port 8080).
+ *   browser → Next.js (production build, port 13000) → /api proxy → backend (port 18080).
  *
  * E2E_BACKEND=real (default) runs the Spring Boot jar; E2E_BACKEND=stub runs e2e/stub/contract-stub.mjs, an
  * in-memory implementation of spec/api-contract.md used to validate the tests themselves while the backend
@@ -19,9 +19,10 @@ const STATE_DIR = path.join(E2E_DIR, ".state");
 const PIDS_FILE = path.join(STATE_DIR, "pids.json");
 export const STUB_DATA_FILE = path.join(STATE_DIR, "stub-data.json");
 
-// Must be 8080: the frontend's /api proxy destination is fixed at `next build` time (next.config.ts rewrites read
-// BACKEND_URL during the build), so a different port at `next start` is ignored. See the E2E report, finding F-1.
-export const BACKEND_PORT = 8080;
+// Deliberately not 8080 (the development default): the frontend must pick up BACKEND_URL at runtime, and a
+// non-default port proves it (regression check for review M-3 / E2E finding I-3). It also avoids colliding with a
+// developer's own backend.
+export const BACKEND_PORT = 18080;
 export const FRONTEND_PORT = 13000;
 export const FRONTEND_URL = `http://localhost:${FRONTEND_PORT}`;
 export const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;

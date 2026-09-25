@@ -6,6 +6,7 @@ import { Field } from "@/components/ui/Field";
 import { fieldMessage, isApiError } from "@/lib/api/errors";
 import { FIELD_LIMITS, type TicketResponse } from "@/lib/api/types";
 import { useAssignTicket, useReloadTicket } from "../hooks/queries";
+import { useActionFailure } from "../hooks/useActionFailure";
 
 /**
  * REQ-4 (assignee): a separate, immediately-saved control using PUT /tickets/{id}/assignee, so it never shares a
@@ -15,7 +16,7 @@ export function AssigneeControl({ ticket }: { ticket: TicketResponse }) {
   const [assignee, setAssignee] = useState(ticket.assignee ?? "");
   const assignTicket = useAssignTicket(ticket.id);
   const reloadTicket = useReloadTicket(ticket.id);
-  const [failure, setFailure] = useState<unknown>(null);
+  const [failure, setFailure] = useActionFailure<unknown>(ticket.version, (error) => error);
 
   const save = async (value: string | null) => {
     setFailure(null);

@@ -1,11 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
-import { aPage, aSummary, problem } from "@/test/fixtures";
-import { renderWithClient } from "@/test/render";
-import { server } from "@/test/server";
-import type { TicketListParams } from "../api";
-import { TicketListView } from "./TicketListView";
+import { aPage, aSummary, problem } from "@tests/support/fixtures";
+import { renderWithClient } from "@tests/support/render";
+import { server } from "@tests/support/server";
+import type { TicketListParams } from "@/features/tickets/api";
+import { TicketListView } from "@/features/tickets/components/TicketListView";
 
 const DEFAULTS: TicketListParams = { q: "", status: [], page: 0, size: 20, sort: "createdAt,desc" };
 
@@ -123,6 +123,40 @@ describe("TicketListView search and status filter (REQ-6/7, TS-FE-04)", () => {
     await user.type(screen.getByLabelText("Search"), "printer");
 
     await waitFor(() => expect(onParamsChange).toHaveBeenLastCalledWith({ ...DEFAULTS, q: "printer", page: 0 }));
+  });
+
+  it("follows the URL when the search changes from outside, e.g. Back button or nav link (M-2)", async () => {
+    server.use(http.get("/api/v1/tickets", () => HttpResponse.json(aPage([]))));
+    const onParamsChange = vi.fn();
+    const { user, rerender } = renderWithClient(
+      <TicketListView params={DEFAULTS} onParamsChange={onParamsChange} searchDebounceMs={0} />,
+    );
+    await user.type(screen.getByLabelText("Search"), "printer");
+    await waitFor(() => expect(onParamsChange).toHaveBeenLastCalledWith({ ...DEFAULTS, q: "printer", page: 0 }));
+    rerender(<TicketListView params={{ ...DEFAULTS, q: "printer" }} onParamsChange={onParamsChange} searchDebounceMs={0} />);
+    onParamsChange.mockClear();
+
+    // The user navigates back to the unfiltered list: the URL no longer has q.
+    rerender(<TicketListView params={DEFAULTS} onParamsChange={onParamsChange} searchDebounceMs={0} />);
+
+    await waitFor(() => expect(screen.getByLabelText("Search")).toHaveValue(""));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(onParamsChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps what the user is typing when its own search reaches the URL", async () => {
+    server.use(http.get("/api/v1/tickets", () => HttpResponse.json(aPage([]))));
+    const onParamsChange = vi.fn();
+    const { user, rerender } = renderWithClient(
+      <TicketListView params={DEFAULTS} onParamsChange={onParamsChange} searchDebounceMs={0} />,
+    );
+    await user.type(screen.getByLabelText("Search"), "print");
+    await waitFor(() => expect(onParamsChange).toHaveBeenLastCalledWith({ ...DEFAULTS, q: "print", page: 0 }));
+
+    await user.type(screen.getByLabelText("Search"), "er ");
+    rerender(<TicketListView params={{ ...DEFAULTS, q: "print" }} onParamsChange={onParamsChange} searchDebounceMs={0} />);
+
+    expect(screen.getByLabelText("Search")).toHaveValue("printer ");
   });
 
   it("limits the keyword to 100 characters", () => {

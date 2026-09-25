@@ -662,7 +662,7 @@ confirms before it is applied. Later steps are written against those defaults an
 - **Objective:** a TanStack Query provider. Accessible UI primitives (`Button`, `Field` with an `aria-describedby`
   error slot, `Alert`, `Spinner`, `EmptyState`). MSW handlers and fixtures typed against `schema.d.ts`, including
   Problem Details bodies for every code.
-- **Files:** `frontend/src/components/ui/*`, `frontend/src/app/providers.tsx`, `frontend/src/test/{msw,fixtures}/*`.
+- **Files:** `frontend/src/components/ui/*`, `frontend/src/app/providers.tsx`, `frontend/tests/support/*`.
 - **Depends on:** STEP-47.
 - **Acceptance criteria:** fixtures fail type-checking if they drift from the contract.
 - **Tests required:** unit and axe tests for each primitive.

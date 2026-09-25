@@ -2,10 +2,10 @@ import { screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import type { TicketResponse, TicketStatus } from "@/lib/api/types";
-import { ALLOWED_TRANSITIONS, aComment, aPage, aTicket, fieldError, problem } from "@/test/fixtures";
-import { renderWithClient } from "@/test/render";
-import { server } from "@/test/server";
-import { TicketDetailsView } from "./TicketDetailsView";
+import { ALLOWED_TRANSITIONS, aComment, aPage, aTicket, fieldError, problem } from "@tests/support/fixtures";
+import { renderWithClient } from "@tests/support/render";
+import { server } from "@tests/support/server";
+import { TicketDetailsView } from "@/features/tickets/components/TicketDetailsView";
 
 /** Serves one ticket (mutable) plus its comments; returns the recorded write requests. */
 function serveTicket(initial: TicketResponse, comments = aPage([aComment()], { number: 0, size: 50 })) {
@@ -135,6 +135,34 @@ describe("status actions (REQ-11/12, TS-FE-07/08)", () => {
     await user.click(within(alert).getByRole("button", { name: "Reload ticket" }));
     await waitFor(() => expect(state.gets).toBeGreaterThan(getsBefore));
   });
+
+  it("clears the conflict message once the ticket has been reloaded (I-2)", async () => {
+    const { user, state } = await renderTicket(aTicket({ status: "OPEN", version: 2 }));
+    server.use(http.post("/api/v1/tickets/42/status-transitions", () => problem(409, "TICKET_CONCURRENT_MODIFICATION")));
+    await user.click(screen.getByRole("button", { name: "Start progress" }));
+    const alert = await screen.findByRole("alert");
+
+    state.ticket = aTicket({ status: "CANCELLED", version: 3 });
+    await user.click(within(alert).getByRole("button", { name: "Reload ticket" }));
+
+    expect(await screen.findByText("No further status changes are possible.")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps the explanation of a rejected transition after the automatic reload", async () => {
+    const { user, state } = await renderTicket(aTicket({ status: "OPEN" }));
+    server.use(
+      http.post("/api/v1/tickets/42/status-transitions", () => {
+        state.ticket = aTicket({ status: "CANCELLED", version: 3 });
+        return problem(409, "TICKET_INVALID_TRANSITION", { detail: "Ticket 42 cannot move from CANCELLED to IN_PROGRESS." });
+      }),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Start progress" }));
+
+    expect(await screen.findByText("No further status changes are possible.")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Ticket 42 cannot move from CANCELLED to IN_PROGRESS.");
+  });
 });
 
 describe("edit ticket (REQ-4, TS-FE-09)", () => {
@@ -186,8 +214,36 @@ describe("edit ticket (REQ-4, TS-FE-09)", () => {
     expect(alert).toHaveTextContent("This ticket was changed by someone else.");
     state.ticket = aTicket({ version: 3, description: "Changed by a colleague" });
     await user.click(within(alert).getByRole("button", { name: "Reload ticket" }));
-    expect(await screen.findByText("Changed by a colleague")).toBeInTheDocument();
+    expect(await screen.findByText("Changed by a colleague", { selector: "p" })).toBeInTheDocument();
     expect(screen.getByLabelText("Title")).toHaveValue("My unsaved title");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("after reloading a conflicted ticket, saving sends only the user's changes (no lost update, M-1)", async () => {
+    const { user, state } = await renderTicket(aTicket({ version: 2, description: "Original description" }));
+    server.use(http.patch("/api/v1/tickets/42", () => problem(409, "TICKET_CONCURRENT_MODIFICATION")));
+    const title = screen.getByLabelText("Title");
+    await user.clear(title);
+    await user.type(title, "My title");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    const alert = await screen.findByRole("alert");
+
+    // A colleague changed the description meanwhile; reloading brings in their version.
+    state.ticket = aTicket({ version: 3, description: "Changed by a colleague" });
+    await user.click(within(alert).getByRole("button", { name: "Reload ticket" }));
+    expect(await screen.findByText("Changed by a colleague", { selector: "p" })).toBeInTheDocument();
+    let body: unknown;
+    server.use(
+      http.patch("/api/v1/tickets/42", async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json(aTicket({ version: 4, title: "My title", description: "Changed by a colleague" }));
+      }),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(body).toEqual({ version: 3, title: "My title" }));
+    expect(screen.getByLabelText("Description")).toHaveValue("Changed by a colleague");
   });
 
   it("shows TICKET_NOT_EDITABLE when the server refuses the edit", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ticketListQuery } from "./api";
-import { parseTicketListParams } from "./hooks/useTicketListParams";
+import { ticketListQuery } from "@/features/tickets/api";
+import { parseTicketListParams } from "@/features/tickets/hooks/useTicketListParams";
 
 describe("ticketListQuery (api-contract §6.2)", () => {
   it("sends trimmed q, repeated status, page, size and sort", () => {

@@ -82,7 +82,7 @@ The architecture leaves extension points for them (§19).
 ## 4. Repository and module structure
 
 ```
-support-ticket-management-system/
+support-ticket-management-service/
 ├── backend/                          # single Gradle project (⚠ A-8: not multi-module)
 │   ├── build.gradle.kts
 │   ├── settings.gradle.kts
@@ -226,6 +226,9 @@ frontend/src/
 │   ├── schema.d.ts                   # generated from spec/openapi.yaml
 │   └── errors.ts                     # ApiError type, code → user message map
 └── components/ui/                    # generic UI primitives (Button, Field, Alert, Spinner, EmptyState)
+
+frontend/tests/                       # Vitest tests, mirroring src/ (e.g. tests/features/tickets/components/…)
+└── support/                          # test setup, MSW server, contract-typed fixtures, render helper
 ```
 
 ### 6.2 Principles
@@ -680,6 +683,7 @@ The most consequential are **A-17/A-18** (what "terminal" allows) and **A-20** (
 ## Changelog
 
 - 2026-09-25 — Initial draft.
+- 2026-09-26 — Frontend tests live in `frontend/tests/` (repository layout decision).
 - 2026-09-25 — §12 aligned with `data-model.md`: `varchar(n)` only, table `ticket_comment`, composite indexes. A-13/14/15/22/31 given concrete values there.
 - 2026-09-25 — Aligned with `api-contract.md`: assignee endpoint (A-29), `VALIDATION_FAILED` for path/query errors, error-body fields, `TICKET_NOT_COMMENTABLE`.
 - 2026-09-25 — PostgreSQL confirmed over MySQL/MongoDB ([ADR-0001](../docs/adr/0001-use-postgresql.md)).

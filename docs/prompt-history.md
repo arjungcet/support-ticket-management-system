@@ -169,3 +169,107 @@ Full per-session transcripts live in `.specstory/history/`.
 > update, assignee, comment, search, filter, valid/invalid transition, validation failure, backend error in UI,
 > persistence after restart), create/update integration/E2E tests, run them, and classify every failure (test /
 > implementation / specification / environment defect) without hiding any. Don't modify production code first.
+
+---
+
+## 2026-09-26 03:30 — Strict code review
+**Phase:** Review
+**Full text:** [.specstory/history/2026-09-26_03-30-prompt-code-review.md](../.specstory/history/2026-09-26_03-30-prompt-code-review.md)
+
+> Strict senior-engineer review of the whole implementation against all specs and rules (business logic, state machine,
+> validation, status codes, contract, security, transactions, DB, races, exceptions, N+1, indexes, tests, over-mocking,
+> FE/BE mismatches, hard-coded config, secrets, dead code, complexity, maintainability). Severity/file/problem/why/fix
+> per finding. No code changes.
+
+---
+
+## 2026-09-26 04:00 — AI-output audit
+**Phase:** Review (AI output audit)
+**Full text:** [.specstory/history/2026-09-26_04-00-prompt-ai-review.md](../.specstory/history/2026-09-26_04-00-prompt-ai-review.md)
+
+> Audit AI output across history, specs, code, tests and recommendations; document at least 3 real mistakes/risky
+> assumptions (suggestion, why wrong, detection, evidence, correct decision, fix, preventive rule) in `docs/ai-review.md`.
+> Don't manufacture mistakes.
+
+---
+
+## 2026-09-26 04:30 — Security review
+**Phase:** Review (security)
+**Full text:** [.specstory/history/2026-09-26_04-30-prompt-security-review.md](../.specstory/history/2026-09-26_04-30-prompt-security-review.md)
+
+> Security review of the whole repository including Git-tracked files and history: secrets (passwords, keys, tokens, DB
+> credentials, config, frontend), sensitive logging, unsafe error responses, SQL injection/unsafe queries, input
+> validation, CORS, dependencies, actuator exposure, production configuration. Severity/file/finding/risk/remediation.
+> No changes.
+
+---
+
+## 2026-09-26 05:00 — Final acceptance review
+**Phase:** Review (acceptance)
+**Full text:** [.specstory/history/2026-09-26_05-00-prompt-acceptance-review.md](../.specstory/history/2026-09-26_05-00-prompt-acceptance-review.md)
+
+> Final acceptance review against the original requirements: traceability matrix (requirement, spec section,
+> implementation, automated test, result), verify 15 acceptance criteria with evidence, run the suites, classify
+> PASS/FAIL/PARTIAL/NOT VERIFIED. No code changes.
+
+---
+
+## 2026-09-26 05:40 — Fix confirmed defects from acceptance review
+**Phase:** Fix
+**Full text:** [.specstory/history/2026-09-26_05-40-prompt-fix-defects.md](../.specstory/history/2026-09-26_05-40-prompt-fix-defects.md)
+
+> Fix only confirmed defects from the acceptance review: explain each, name the affected spec/AC, smallest change,
+> regression test, run tests, confirm resolution. Don't weaken tests or acceptance criteria. Then run all backend and
+> frontend suites.
+
+---
+
+## 2026-09-26 06:20 — Target repository structure (pasted)
+**Phase:** Repository structure
+**Full text:** [.specstory/history/2026-09-26_06-20-prompt-target-structure.md](../.specstory/history/2026-09-26_06-20-prompt-target-structure.md)
+
+> Pasted a target layout (`support-ticket-management-sdd/` with backend `pom.xml`, `frontend/tests/`, spec/rules/
+> skills/commands/docs/.specstory, `.gitignore`, `README.md`) without further instructions.
+
+---
+
+## 2026-09-26 06:45 — AI development history (template)
+**Phase:** Documentation
+**Full text:** [.specstory/history/2026-09-26_06-45-prompt-ai-development-history.md](../.specstory/history/2026-09-26_06-45-prompt-ai-development-history.md)
+
+> Pasted an "AI Development History" template (phases: repository setup, requirements, backend implementation, testing,
+> review; each with tool, prompt/task, result, human review/decision) without further instructions.
+
+---
+
+## 2026-09-26 07:00 — AI development history template (pasted again)
+**Phase:** Documentation
+**Full text:** [.specstory/history/2026-09-26_07-00-prompt-ai-development-history-again.md](../.specstory/history/2026-09-26_07-00-prompt-ai-development-history-again.md)
+
+> The same template pasted a second time, without instructions.
+
+---
+
+## 2026-09-26 07:10 — Phase name list (pasted)
+**Phase:** Documentation
+**Full text:** [.specstory/history/2026-09-26_07-10-prompt-phase-slugs.md](../.specstory/history/2026-09-26_07-10-prompt-phase-slugs.md)
+
+> A list of 16 numbered phase slugs (01-init-ai-engineering-guidelines … 16-final-fixes), without instructions.
+
+---
+
+## 2026-09-26 07:15 — Assessment guide (pasted)
+**Phase:** Process / context
+**Full text (summary):** [.specstory/history/2026-09-26_07-15-prompt-assessment-guide.md](../.specstory/history/2026-09-26_07-15-prompt-assessment-guide.md)
+
+> The engineer shared the guide they follow: prompt sequence 0–17, target structure, "keep evidence of which AI was
+> used (Cursor + GitHub Copilot)", and 16 recommended Git milestone names (01-init-ai-engineering-guidelines …
+> 16-final-fixes).
+
+---
+
+## 2026-09-26 07:20 — Name (pasted mid-turn)
+**Phase:** Repository structure
+**Full text:** [.specstory/history/2026-09-26_07-20-prompt-service-name.md](../.specstory/history/2026-09-26_07-20-prompt-service-name.md)
+
+> support-ticket-management-service

@@ -8,8 +8,8 @@ Read this first, then the files it links to.
 **Support Ticket Management System** — Java 21 / Spring Boot REST backend, PostgreSQL (production),
 H2 (lightweight local/test only), React + Next.js frontend. Built with **Specification-Driven Development**.
 
-> Status: phase 9 of 14 (Implementation plan drafted in `spec/implementation-plan.md`). **No application code exists yet.**
-> Implementation proceeds step by step (`STEP-nn`), starting with the Phase 0 specification fixes.
+> Status: backend skeleton only (ticket API not implemented: plan STEP-08…39, blocked on Phase 0 decisions).
+> Frontend and E2E suite implemented. Latest verdicts are in `docs/reviews/` (acceptance review: not accepted yet).
 
 ## Non-negotiables
 
@@ -54,8 +54,10 @@ rules/ skills/ commands/     # canonical AI guidance (tool-agnostic)
 spec/                        # SDD phase artifacts (requirements, functional spec, architecture, data model, openapi, state machine, test strategy, plan)
 docs/                        # supporting docs (adr/, reviews/, prompt-history.md)
 .specstory/history/          # full prompt transcripts
-backend/                     # Spring Boot (Gradle, Kotlin DSL) — created in Backend phase
-frontend/                    # Next.js — created in Frontend phase
+backend/                     # Spring Boot (Gradle, Kotlin DSL): src/main, src/test, src/integrationTest
+frontend/                    # Next.js: src/ (app code), tests/ (Vitest, mirrors src/)
+e2e/                         # Playwright journeys + contract stub
+README.md                    # human entry point: status, layout, how to run and test
 ```
 
 Edit guidance **only** in `rules/`, `skills/`, `commands/`. The `.cursor/` and `.claude/` entries are thin adapters/symlinks.

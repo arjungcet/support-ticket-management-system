@@ -18,6 +18,9 @@ repositories {
     mavenCentral()
 }
 
+// Security override of a Spring Boot managed version; see the comment on `tomcat` in gradle/libs.versions.toml.
+extra["tomcat.version"] = libs.versions.tomcat.get()
+
 dependencies {
     implementation(libs.spring.boot.starter.webmvc)
 }

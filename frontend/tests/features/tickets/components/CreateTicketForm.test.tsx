@@ -1,10 +1,10 @@
 import { screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
-import { aTicket, fieldError, problem } from "@/test/fixtures";
-import { renderWithClient } from "@/test/render";
-import { server } from "@/test/server";
-import { CreateTicketForm } from "./CreateTicketForm";
+import { aTicket, fieldError, problem } from "@tests/support/fixtures";
+import { renderWithClient } from "@tests/support/render";
+import { server } from "@tests/support/server";
+import { CreateTicketForm } from "@/features/tickets/components/CreateTicketForm";
 
 describe("CreateTicketForm (REQ-1, TS-FE-02)", () => {
   it("posts the ticket and reports the created ticket", async () => {
