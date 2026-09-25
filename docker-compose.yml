@@ -1,0 +1,16 @@
+# Local PostgreSQL for development (spec/architecture.md §2, ADR-0001). Credentials come from .env (git-ignored);
+# copy .env.example to .env first. Bound to localhost only.
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: supportdesk
+      POSTGRES_USER: ${POSTGRES_USER:-supportdesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:

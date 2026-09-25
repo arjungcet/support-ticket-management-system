@@ -23,13 +23,17 @@ extra["tomcat.version"] = libs.versions.tomcat.get()
 
 dependencies {
     implementation(libs.spring.boot.starter.webmvc)
+    implementation(libs.spring.boot.starter.data.jpa)
+    implementation(libs.spring.boot.starter.flyway)
+    implementation(libs.flyway.database.postgresql)
+    runtimeOnly(libs.postgresql)
+    // Lightweight local runs (`h2` profile) and, while Docker is unavailable, the integration tests (see below).
+    runtimeOnly(libs.h2)
 }
 
 jacoco {
     toolVersion = libs.versions.jacoco.get()
 }
-
-val specAcceptanceTag = "spec-acceptance"
 
 // JUnit version comes from the Spring Boot BOM so test suites never pin a different Jupiter version.
 val junitJupiterVersion: String = dependencyManagement.importedProperties["junit-jupiter.version"]
@@ -42,6 +46,7 @@ testing {
             useJUnitJupiter(junitJupiterVersion)
             dependencies {
                 implementation(libs.spring.boot.starter.test)
+                implementation(libs.archunit.junit5)
             }
         }
 
@@ -51,13 +56,14 @@ testing {
             dependencies {
                 implementation(project())
                 implementation(libs.spring.boot.starter.test)
+                implementation(libs.spring.boot.testcontainers)
+                implementation(libs.testcontainers.postgresql)
             }
             targets {
                 all {
                     testTask.configure {
-                        useJUnitPlatform {
-                            excludeTags(specAcceptanceTag)
-                        }
+                        // Database behaviour is tested on PostgreSQL via Testcontainers (rules/testing.md §4), so
+                        // Docker is required. Without it these tests fail fast — they never fall back to H2.
                         shouldRunAfter(tasks.test)
                     }
                 }
@@ -72,21 +78,6 @@ val integrationTest = tasks.named<Test>("integrationTest")
 configurations.named("integrationTestImplementation") { extendsFrom(configurations.implementation.get()) }
 configurations.named("integrationTestRuntimeOnly") { extendsFrom(configurations.runtimeOnly.get()) }
 
-// Black-box API tests derived from spec/api-contract.md, spec/state-machine.md and spec/test-strategy.md, written
-// ahead of the implementation. They live in the integrationTest source set (their final home) but are tagged and run
-// separately until the endpoints exist, so they don't turn `check` red. Remove the tag from a class once the feature
-// it covers is implemented (implementation plan STEP-40/42).
-tasks.register<Test>("specAcceptanceTest") {
-    description = "Runs spec-derived API acceptance tests written ahead of the implementation."
-    group = LifecycleBasePlugin.VERIFICATION_GROUP
-    testClassesDirs = sourceSets["integrationTest"].output.classesDirs
-    classpath = sourceSets["integrationTest"].runtimeClasspath
-    useJUnitPlatform {
-        includeTags(specAcceptanceTag)
-    }
-    shouldRunAfter(integrationTest)
-}
-
 // Coverage report aggregates execution data from both suites (spec/test-strategy.md §14).
 tasks.jacocoTestReport {
     dependsOn(tasks.test, integrationTest)
@@ -97,6 +88,26 @@ tasks.jacocoTestReport {
     }
 }
 
+// Coverage floor on the business code (rules/testing.md §3, plan STEP-45), over both test suites.
+tasks.jacocoTestCoverageVerification {
+    dependsOn(tasks.test, integrationTest)
+    executionData(tasks.test.get(), integrationTest.get())
+    violationRules {
+        rule {
+            element = "PACKAGE"
+            includes = listOf("com.supportdesk.ticket.domain", "com.supportdesk.ticket.application")
+            limit {
+                counter = "LINE"
+                minimum = "0.80".toBigDecimal()
+            }
+            limit {
+                counter = "BRANCH"
+                minimum = "0.70".toBigDecimal()
+            }
+        }
+    }
+}
+
 tasks.check {
-    dependsOn(integrationTest, tasks.jacocoTestReport)
+    dependsOn(integrationTest, tasks.jacocoTestReport, tasks.jacocoTestCoverageVerification)
 }

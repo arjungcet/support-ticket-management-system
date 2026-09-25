@@ -1,3 +1,24 @@
 spring:
   application:
     name: support-desk
+  # The datasource comes only from the environment (SPRING_DATASOURCE_URL / _USERNAME / _PASSWORD) or a profile;
+  # there are no defaults for credentials (rules/security.md §1). Never fall back to an embedded database: without a
+  # configured URL the application fails at startup.
+  datasource:
+    embedded-database-connection: none
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    locations: classpath:db/migration/common,classpath:db/migration/{vendor}
+    clean-disabled: true
+
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
