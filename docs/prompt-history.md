@@ -290,3 +290,19 @@ Full per-session transcripts live in `.specstory/history/`.
 
 > Run the two suggested git commands (commit the name fix, fast-forward main), then complete milestones 09 backend
 > domain, 10 backend API and 11 backend tests so the 241 spec-based API tests pass.
+
+---
+
+## 2026-09-26 07:55 — Try again
+**Phase:** Backend (continuation)
+**Full text:** [.specstory/history/2026-09-26_07-55-prompt-try-again.md](../.specstory/history/2026-09-26_07-55-prompt-try-again.md)
+
+> Try again: continue implementing backend milestones 09–11.
+
+---
+
+## 2026-09-26 08:20 — Complete what is left
+**Phase:** Backend
+**Full text:** [.specstory/history/2026-09-26_08-20-prompt-complete-leftovers.md](../.specstory/history/2026-09-26_08-20-prompt-complete-leftovers.md)
+
+> Complete whatever is left from the previous request (backend milestones 09–11 follow-ups and commits).

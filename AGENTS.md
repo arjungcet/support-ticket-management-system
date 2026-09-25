@@ -8,8 +8,8 @@ Read this first, then the files it links to.
 **Support Ticket Management System** — Java 21 / Spring Boot REST backend, PostgreSQL (production),
 H2 (lightweight local/test only), React + Next.js frontend. Built with **Specification-Driven Development**.
 
-> Status: backend skeleton only (ticket API not implemented: plan STEP-08…39, blocked on Phase 0 decisions).
-> Frontend and E2E suite implemented. Latest verdicts are in `docs/reviews/` (acceptance review: not accepted yet).
+> Status: backend ticket API (PostgreSQL), frontend and E2E suite implemented and passing. Phase 0 spec decisions still
+> open. Latest verdicts are in `docs/reviews/`.
 
 ## Non-negotiables
 

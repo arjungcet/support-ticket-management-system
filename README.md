@@ -13,10 +13,10 @@ TypeScript · JUnit (Jupiter) · Vitest + Testing Library + MSW · Playwright.
 | Area | State |
 |------|-------|
 | Specifications | Drafted and reviewed. Phase 0 decisions still open ([spec review](docs/reviews/2026-09-26-spec-review.md)) |
-| Backend | **Skeleton only:** the ticket API is not implemented yet (implementation plan STEP-08…39) |
+| Backend | Ticket API implemented: domain + state machine, PostgreSQL persistence (JPA + Flyway), REST API, validation, Problem Details errors |
 | Frontend | Implemented against the API contract: create, list, details, edit, assignee, comments, search, filter, status transitions, error handling |
-| Tests | Backend spec-acceptance tests written ahead of the implementation. Frontend unit tests. E2E journeys |
-| Acceptance | **Not accepted yet.** See the [acceptance review](docs/reviews/2026-09-26-acceptance-review.md) and the [fixes](docs/reviews/2026-09-26-fixes.md) |
+| Tests | Backend: 80 unit (incl. ArchUnit) + 267 integration tests on PostgreSQL (Testcontainers), coverage gate ≥ 80 % line / 70 % branch. Frontend: 83. E2E: 21/21 against the real backend on PostgreSQL |
+| Acceptance | Re-review pending after the backend implementation. See the [backend report](docs/reviews/2026-09-26-backend-implementation.md), the earlier [acceptance review](docs/reviews/2026-09-26-acceptance-review.md) and the [fixes](docs/reviews/2026-09-26-fixes.md) |
 
 ## Repository layout
 
@@ -24,7 +24,7 @@ TypeScript · JUnit (Jupiter) · Vitest + Testing Library + MSW · Playwright.
 backend/            Spring Boot service (Gradle, Kotlin DSL)
   src/main/           application code
   src/test/           unit and slice tests (./gradlew test)
-  src/integrationTest/ integration and spec-acceptance tests (./gradlew integrationTest | specAcceptanceTest)
+  src/integrationTest/ integration tests incl. spec-derived API tests (./gradlew integrationTest)
 frontend/           Next.js app
   src/                app routes, features, API client, UI components
   tests/              Vitest tests mirroring src/, plus tests/support (MSW, fixtures, setup)
@@ -42,13 +42,19 @@ AGENTS.md, CLAUDE.md, .cursor/, .claude/   entry points and adapters for AI codi
 
 - JDK 21 (the Gradle toolchain looks for it; set `JAVA_HOME` or `JAVA21_HOME` if it isn't found)
 - Node.js ≥ 22.13 and npm
-- Docker, for PostgreSQL and Testcontainers once persistence is implemented
+- Docker: required for the backend integration tests (Testcontainers), E2E (throwaway PostgreSQL) and local PostgreSQL
 
 ## Running
 
 ```bash
-# Backend (http://localhost:8080)
+# Local PostgreSQL (copy .env.example to .env first)
+docker compose up -d db
+
+# Backend (http://localhost:8080) with PostgreSQL: export SPRING_DATASOURCE_URL / _USERNAME / _PASSWORD (see .env.example)
 cd backend && ./gradlew bootRun
+
+# Backend without a database server (in-memory, data lost on restart)
+cd backend && ./gradlew bootRun --args='--spring.profiles.active=h2'
 
 # Frontend (http://localhost:3000). Proxies /api/* to BACKEND_URL at runtime (defaults to :8080 in dev)
 cd frontend && npm install && npm run dev
@@ -60,12 +66,12 @@ cd frontend && npm run build && BACKEND_URL=http://backend.example:8080 npm star
 ## Testing
 
 ```bash
-cd backend && ./gradlew build                 # unit + integration tests, coverage report
-cd backend && ./gradlew specAcceptanceTest    # spec-derived API tests (fail until the backend is implemented)
+cd backend && ./gradlew build                 # unit + ArchUnit + integration tests on PostgreSQL (Docker), coverage gate
 cd frontend && npm test && npm run lint && npm run typecheck
 cd backend && ./gradlew bootJar && cd ../frontend && npm run build   # E2E needs both builds
 cd e2e && npm install && npx playwright install chromium
-cd e2e && npm run e2e                          # against the real backend
+cd e2e && npm run e2e                          # real backend on a throwaway PostgreSQL container (Docker)
+cd e2e && E2E_DB=h2 npm run e2e               # real backend on in-memory H2 (J13 persistence then fails by design)
 cd e2e && npm run e2e:stub                     # against the contract stub (validates the tests themselves)
 ```
 

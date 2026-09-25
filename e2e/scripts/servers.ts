@@ -1,4 +1,5 @@
 import { execFileSync, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +19,9 @@ export const ROOT = path.resolve(E2E_DIR, "..");
 const STATE_DIR = path.join(E2E_DIR, ".state");
 const PIDS_FILE = path.join(STATE_DIR, "pids.json");
 export const STUB_DATA_FILE = path.join(STATE_DIR, "stub-data.json");
+const DB_FILE = path.join(STATE_DIR, "db.json");
+const DB_CONTAINER = "supportdesk-e2e-postgres";
+const DB_PORT = 15432;
 
 // Deliberately not 8080 (the development default): the frontend must pick up BACKEND_URL at runtime, and a
 // non-default port proves it (regression check for review M-3 / E2E finding I-3). It also avoids colliding with a
@@ -109,7 +113,8 @@ export async function startBackend(): Promise<void> {
     if (!existsSync(jar)) {
       throw new Error(`[environment] backend jar missing: run ./gradlew bootJar in backend/ (${jar})`);
     }
-    child = spawn(java21(), ["-jar", jar, `--server.port=${BACKEND_PORT}`], {
+    child = spawn(java21(), ["-jar", jar, `--server.port=${BACKEND_PORT}`, ...databaseArgs()], {
+      env: { ...process.env, ...databaseEnv() },
       stdio: ["ignore", out, out],
       detached: true,
     });
@@ -151,6 +156,73 @@ export async function stopAll(): Promise<void> {
   kill(pids.backend);
   kill(pids.frontend);
   writePids({});
+}
+
+/**
+ * Database for the real backend. Default: a throwaway PostgreSQL container (Docker required), so journey J13 checks
+ * real persistence across restarts. E2E_DB=h2 uses the in-memory profile instead — explicitly, never as a silent
+ * fallback — and then J13 is expected to fail because in-memory data does not survive a restart.
+ */
+export const databaseKind = (): "postgres" | "h2" => (process.env.E2E_DB === "h2" ? "h2" : "postgres");
+
+interface DbState {
+  password: string;
+}
+
+function databaseArgs(): string[] {
+  return databaseKind() === "h2" ? ["--spring.profiles.active=h2"] : [];
+}
+
+function databaseEnv(): Record<string, string> {
+  if (databaseKind() === "h2") {
+    return {};
+  }
+  const { password } = JSON.parse(readFileSync(DB_FILE, "utf8")) as DbState;
+  return {
+    SPRING_DATASOURCE_URL: `jdbc:postgresql://localhost:${DB_PORT}/postgres`,
+    SPRING_DATASOURCE_USERNAME: "postgres",
+    SPRING_DATASOURCE_PASSWORD: password,
+  };
+}
+
+function docker(...args: string[]): string {
+  return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+}
+
+export async function startDatabase(): Promise<void> {
+  if (backendKind() !== "real" || databaseKind() !== "postgres") {
+    return;
+  }
+  try {
+    docker("info", "--format", "{{.ServerVersion}}");
+  } catch {
+    throw new Error("[environment] Docker is not running: start it, or run with E2E_DB=h2 (J13 will then fail)");
+  }
+  stopDatabase();
+  const password = randomUUID(); // throwaway, generated per run; never committed
+  mkdirSync(STATE_DIR, { recursive: true });
+  writeFileSync(DB_FILE, JSON.stringify({ password } satisfies DbState));
+  docker("run", "-d", "--rm", "--name", DB_CONTAINER, "-e", `POSTGRES_PASSWORD=${password}`,
+    "-p", `127.0.0.1:${DB_PORT}:5432`, "postgres:17");
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    try {
+      docker("exec", DB_CONTAINER, "pg_isready", "-U", "postgres", "-h", "localhost");
+      return;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+  throw new Error("[environment] PostgreSQL container did not become ready within 60 s");
+}
+
+export function stopDatabase(): void {
+  try {
+    docker("rm", "-f", DB_CONTAINER);
+  } catch {
+    // not running
+  }
+  rmSync(DB_FILE, { force: true });
 }
 
 export function resetStubData() {
