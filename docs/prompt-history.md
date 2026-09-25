@@ -306,3 +306,19 @@ Full per-session transcripts live in `.specstory/history/`.
 **Full text:** [.specstory/history/2026-09-26_08-20-prompt-complete-leftovers.md](../.specstory/history/2026-09-26_08-20-prompt-complete-leftovers.md)
 
 > Complete whatever is left from the previous request (backend milestones 09–11 follow-ups and commits).
+
+---
+
+## 2026-09-26 08:50 — Final acceptance review (re-run)
+**Phase:** Review (acceptance)
+**Full text:** [.specstory/history/2026-09-26_08-50-prompt-acceptance-review-rerun.md](../.specstory/history/2026-09-26_08-50-prompt-acceptance-review-rerun.md)
+
+> Re-run the final acceptance review (same 15 criteria, traceability matrix, PASS/FAIL/PARTIAL/NOT VERIFIED, evidence only, no code changes).
+
+---
+
+## 2026-09-26 08:52 — Requirements analysis gap (mid-turn)
+**Phase:** Requirements (milestone 02)
+**Full text:** [.specstory/history/2026-09-26_08-52-prompt-requirements-gap.md](../.specstory/history/2026-09-26_08-52-prompt-requirements-gap.md)
+
+> Complete milestone 02: run the requirements analysis (Prompt 1) so spec/requirements.md has actors, NFRs, assumptions and open questions.

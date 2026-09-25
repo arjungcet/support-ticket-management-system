@@ -12,11 +12,11 @@ TypeScript · JUnit (Jupiter) · Vitest + Testing Library + MSW · Playwright.
 
 | Area | State |
 |------|-------|
-| Specifications | Drafted and reviewed. Phase 0 decisions still open ([spec review](docs/reviews/2026-09-26-spec-review.md)) |
+| Specifications | Drafted and reviewed. [Requirements analysis](spec/requirements.md) complete: assumptions, 11 open questions and 6 decisions awaiting sign-off. Phase 0 decisions still open ([spec review](docs/reviews/2026-09-26-spec-review.md)) |
 | Backend | Ticket API implemented: domain + state machine, PostgreSQL persistence (JPA + Flyway), REST API, validation, Problem Details errors |
 | Frontend | Implemented against the API contract: create, list, details, edit, assignee, comments, search, filter, status transitions, error handling |
 | Tests | Backend: 80 unit (incl. ArchUnit) + 267 integration tests on PostgreSQL (Testcontainers), coverage gate ≥ 80 % line / 70 % branch. Frontend: 83. E2E: 21/21 against the real backend on PostgreSQL |
-| Acceptance | Re-review pending after the backend implementation. See the [backend report](docs/reviews/2026-09-26-backend-implementation.md), the earlier [acceptance review](docs/reviews/2026-09-26-acceptance-review.md) and the [fixes](docs/reviews/2026-09-26-fixes.md) |
+| Acceptance | **Accepted: 15/15 criteria PASS** ([re-run](docs/reviews/2026-09-26-acceptance-review-2.md)), with open conditions: auth/deployment decision, Phase 0 spec decisions, CI. Earlier run: [acceptance review](docs/reviews/2026-09-26-acceptance-review.md) |
 
 ## Repository layout
 
