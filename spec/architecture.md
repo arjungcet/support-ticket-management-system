@@ -411,6 +411,13 @@ Three families of types, one per boundary. Each is a Java `record`, immutable an
 
 ## 11. Validation strategy
 
+> **Implementation note (2026-09-26):** request bodies are read by `ticket/api/JsonBody` rather than bound to DTOs
+> with Bean Validation. The API contract requires absent vs explicit `null` handling, strict JSON types and
+> unknown-field errors reported together with all other field errors, which DTO binding can't express (review SR-02/
+> SR-03, `docs/ai-review.md` AI-3). Limits still come from one place (`FieldLimits`). Revisit when Phase 0 (plan
+> STEP-02) settles the contract semantics. The API layer uses domain value types (`FieldLimits`,
+> `TicketSearchCriteria`, enums) but never entities; `ArchitectureTest` enforces that.
+
 Four layers of defence. Each rule is **owned** by exactly one layer, and the others back it up.
 
 | # | Layer | What | Failure → |
