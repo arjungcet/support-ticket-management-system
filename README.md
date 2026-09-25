@@ -40,28 +40,53 @@ AGENTS.md, CLAUDE.md, .cursor/, .claude/   entry points and adapters for AI codi
 
 ## Prerequisites
 
-- JDK 21 (the Gradle toolchain looks for it; set `JAVA_HOME` or `JAVA21_HOME` if it isn't found)
+- A JDK 17+ to start Gradle. The build compiles and runs on JDK 21: an installed JDK 21 is used, otherwise Gradle
+  downloads one automatically (foojay toolchain resolver)
 - Node.js ≥ 22.13 and npm
 - Docker: required for the backend integration tests (Testcontainers), E2E (throwaway PostgreSQL) and local PostgreSQL
 
 ## Running
 
+Three terminals, from the repository root. Only Docker, a JDK and Node are needed.
+
 ```bash
-# Local PostgreSQL (copy .env.example to .env first)
+# 1. Local PostgreSQL. Edit .env: set a password (and POSTGRES_PORT if 5432 is already taken, see Troubleshooting)
+cp .env.example .env
 docker compose up -d db
+```
 
-# Backend (http://localhost:8080) with PostgreSQL: export SPRING_DATASOURCE_URL / _USERNAME / _PASSWORD (see .env.example)
-cd backend && ./gradlew bootRun
+```bash
+# 2. Backend on http://localhost:8080 (loads the database settings from .env into the environment)
+set -a && . ./.env && set +a && cd backend && ./gradlew bootRun
+```
 
-# Backend without a database server (in-memory, data lost on restart)
+```bash
+# 3. Frontend on http://localhost:3000 (proxies /api/* to BACKEND_URL, default http://localhost:8080)
+cd frontend && npm ci && npm run dev
+```
+
+Open http://localhost:3000. Data is kept in the `db-data` Docker volume across restarts
+(`docker compose down -v` deletes it).
+
+Other ways to run:
+
+```bash
+# Backend without a database server (in-memory H2, data lost on restart): skip step 1
 cd backend && ./gradlew bootRun --args='--spring.profiles.active=h2'
-
-# Frontend (http://localhost:3000). Proxies /api/* to BACKEND_URL at runtime (defaults to :8080 in dev)
-cd frontend && npm install && npm run dev
 
 # Frontend production build against another backend
 cd frontend && npm run build && BACKEND_URL=http://backend.example:8080 npm start
 ```
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `docker compose up`: `bind: address already in use` on 5432 | A local PostgreSQL already uses 5432. In `.env` set `POSTGRES_PORT=5433` and change `SPRING_DATASOURCE_URL` to `…localhost:5433/…` |
+| Backend exits with `Failed to configure a DataSource: 'url' attribute is not specified` | The `SPRING_DATASOURCE_*` variables aren't set in that terminal: run step 2 exactly as shown, or use the `h2` profile |
+| Backend: `password authentication failed` | `.env` password changed after the volume was created. Use the original, or `docker compose down -v` and start again |
+| Integration tests / E2E fail with `Could not find a valid Docker environment` | Start Docker (Testcontainers and the E2E database need it) |
+| Port 8080 or 3000 in use | Stop the other process, or `SERVER_PORT=8081 ./gradlew bootRun` and `BACKEND_URL=http://localhost:8081 npm run dev -- -p 3001` |
 
 ## Testing
 
@@ -69,7 +94,7 @@ cd frontend && npm run build && BACKEND_URL=http://backend.example:8080 npm star
 cd backend && ./gradlew build                 # unit + ArchUnit + integration tests on PostgreSQL (Docker), coverage gate
 cd frontend && npm test && npm run lint && npm run typecheck
 cd backend && ./gradlew bootJar && cd ../frontend && npm run build   # E2E needs both builds
-cd e2e && npm install && npx playwright install chromium
+cd e2e && npm ci && npx playwright install chromium
 cd e2e && npm run e2e                          # real backend on a throwaway PostgreSQL container (Docker)
 cd e2e && E2E_DB=h2 npm run e2e               # real backend on in-memory H2 (J13 persistence then fails by design)
 cd e2e && npm run e2e:stub                     # against the contract stub (validates the tests themselves)

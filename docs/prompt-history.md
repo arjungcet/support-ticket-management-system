@@ -322,3 +322,9 @@ Full per-session transcripts live in `.specstory/history/`.
 **Full text:** [.specstory/history/2026-09-26_08-52-prompt-requirements-gap.md](../.specstory/history/2026-09-26_08-52-prompt-requirements-gap.md)
 
 > Complete milestone 02: run the requirements analysis (Prompt 1) so spec/requirements.md has actors, NFRs, assumptions and open questions.
+
+## 2026-09-26 09:10 — Fresh-checkout readiness
+**Phase:** Verification / delivery
+**Full text:** [.specstory/history/2026-09-26_09-10-prompt-fresh-checkout-readiness.md](../.specstory/history/2026-09-26_09-10-prompt-fresh-checkout-readiness.md)
+
+> What is left so the project runs on this machine, and will someone who clones the committed code from Git get working code?
