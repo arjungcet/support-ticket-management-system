@@ -204,7 +204,7 @@ The missing backend was deliberately **not** treated as a "fix". It's unimplemen
 - M-4, spec first (`api-contract.md`, `openapi.yaml`), then tests that failed first: on PostgreSQL a single `\u0000` produced **500 INTERNAL_ERROR** for create, update and search, and oversized bodies were accepted. Fixed in `JsonBody`, `RequestParams` and a new `RequestSizeLimitFilter`. 15 new integration tests; frontend hints mirror the rule.
 - D-5: `TicketServiceTest` and `TicketCommentServiceTest` (19 tests, mapped to TS-SVC-01…10). A mutation (version check disabled) made 2 of them fail. Mockito runs as a `-javaagent`, so no JVM warnings.
 - D-4: axe-core WCAG 2.2 AA checks on every page type in light and dark mode (0 violations; a planted violation was detected, so the check works). The full E2E suite passes in Chromium, Firefox and WebKit (102/102). `npm run perf` seeds 100 000 tickets: the **first run failed** (a no-match search scanned the table, p95 545 ms). The trigram indexes already planned in `data-model.md` §13.3 fixed it (p95 10 ms); every scenario is now under 50 ms.
-- CI: `.github/workflows/ci.yml` — Gitleaks over the history, backend build with the coverage gate, frontend checks with `npm audit`, E2E in three engines. Actions pinned to commit SHAs; `actionlint` clean. It has **not run on GitHub yet** (it runs on the next push).
+- CI: `.github/workflows/ci.yml` — Gitleaks over the history, backend build with the coverage gate, frontend checks with `npm audit`, E2E in three engines. Actions pinned to commit SHAs; `actionlint` clean. First GitHub run ([36192065157](https://github.com/arjungcet/support-ticket-management-system/actions/runs/36192065157)): **all 4 jobs green**, E2E 102/102. (An earlier run was cancelled by a newer push, not by a failure.)
 - `openapi.yaml` re-checked against the live backend: 31/31 responses conform, including the new 413 and control-character cases.
 
 **AI mistake caught in this phase:** the first axe sanity check "missed" a planted contrast problem. The cause was the app's own CSP blocking the planted inline style, not axe. Re-planted through JavaScript, it was detected.
@@ -219,5 +219,5 @@ The missing backend was deliberately **not** treated as a "fix". It's unimplemen
 | Requirements sign-off, decisions D-1…D-6 | **All done** 2026-09-26 |
 | Security review H-2 (deployment boundary), M-2 (headers), M-4 (input limits) | **Done** |
 | NFR-3 performance, NFR-4 WCAG 2.2 AA, NFR-5 browsers | **Verified** (automated checks; see limits in `spec/requirements.md` §2.2) |
-| CI pipeline | **Added**; first GitHub run happens on the next push |
+| CI pipeline | **Green on GitHub** (all 4 jobs, E2E 102/102) |
 | Engineer sign-off of the AI-output audit (`ai-review.md` §12) | Open — the engineer's own review |
