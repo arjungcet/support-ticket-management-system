@@ -328,3 +328,15 @@ Full per-session transcripts live in `.specstory/history/`.
 **Full text:** [.specstory/history/2026-09-26_09-10-prompt-fresh-checkout-readiness.md](../.specstory/history/2026-09-26_09-10-prompt-fresh-checkout-readiness.md)
 
 > What is left so the project runs on this machine, and will someone who clones the committed code from Git get working code?
+
+## 2026-09-26 09:40 — Cursor / Copilot evidence
+**Phase:** Documentation / AI development history
+**Full text:** [.specstory/history/2026-09-26_09-40-prompt-cursor-copilot-evidence.md](../.specstory/history/2026-09-26_09-40-prompt-cursor-copilot-evidence.md)
+
+> Pasted-back note: history says Claude Code throughout; genuine Cursor/Copilot evidence should come from remaining work, logged as it is done.
+
+## 2026-09-26 09:50 — Anything left / run now
+**Phase:** Delivery / local run
+**Full text:** [.specstory/history/2026-09-26_09-50-prompt-anything-left-run-now.md](../.specstory/history/2026-09-26_09-50-prompt-anything-left-run-now.md)
+
+> Anything left for me to do in this project? Can I run it right now on my machine?
