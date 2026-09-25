@@ -358,3 +358,9 @@ Full per-session transcripts live in `.specstory/history/`.
 **Full text:** [.specstory/history/2026-09-26_10-50-prompt-complete-remaining.md](../.specstory/history/2026-09-26_10-50-prompt-complete-remaining.md)
 
 > Complete the remaining items: CI, request-size limits, decisions D-2/D-4/D-5.
+
+## 2026-09-26 11:40 — Anything else left?
+**Phase:** Delivery
+**Full text:** [.specstory/history/2026-09-26_11-40-prompt-anything-else-left.md](../.specstory/history/2026-09-26_11-40-prompt-anything-else-left.md)
+
+> Committed and pushed; is anything left?
